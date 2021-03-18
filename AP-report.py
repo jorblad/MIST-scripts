@@ -8,7 +8,8 @@ from datetime import datetime
 from re import search
 
 import logging
-logging.basicConfig(filename='logg.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='logg.log',
+                    encoding='utf-8', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
 base_url = 'https://api.eu.mist.com/api/v1/'
 org_id = '...'
