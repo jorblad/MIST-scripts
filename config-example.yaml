@@ -1,0 +1,7 @@
+mist:
+  base_url: https://api.eu.mist.com/api/v1
+  org_id:
+  mist_token:
+
+report:
+  regex_sitename: .*\(....\)
