@@ -3,18 +3,22 @@ import requests
 import json
 import csv
 import time
+import yaml
 
 from datetime import datetime
 from re import search
 
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='logg.log',
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='ApPerAdress.log',
                     encoding='utf-8', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
-base_url = 'https://api.eu.mist.com/api/v1/'
-org_id = '...'
+with open('config.yaml') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
 
-mist_token = '...'
+base_url = config['mist']['base_url']
+org_id = config['mist']['org_id']
+
+mist_token = config['mist']['mist_token']
 authorization = "Token {}".format(mist_token)
 
 headers = {
@@ -24,7 +28,7 @@ headers = {
 
 #Regex for filtering out so that we only show sites that have a shortname
 # which is how we decide if a site is just for lab or a actual site
-regex_sitename = ".*\(....\)"
+regex_sitename = config['report']['regex_sitename']
 #Regex for empty json to hide sites without any accesspoints.
 regex_empty = "^\[\]$"
 
