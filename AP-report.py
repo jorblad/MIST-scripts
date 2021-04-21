@@ -4,9 +4,11 @@ import json
 import csv
 import time
 import yaml
+import pandas
 
 from datetime import datetime
 from re import search
+
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='ApPerAdress.log',
@@ -32,13 +34,8 @@ regex_sitename = config['report']['regex_sitename']
 #Regex for empty json to hide sites without any accesspoints.
 regex_empty = "^\[\]$"
 
-report_file_site = 'reports/Site_Inventory_Org_' + \
-    str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')) + '.txt'
-
-report_file_ap = 'reports/AP_Inventory_Org_' + \
-    str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')) + '.csv'
-
-file_report = open(report_file_site, "a", encoding="utf8")
+report_file = '{}/{}{}.xlsx'.format(config['report']['file_path'], config['report']
+                                    ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
 
 sites_url = "{}/orgs/{}/sites".format(base_url, org_id)
 
@@ -47,6 +44,7 @@ sites = json.loads(resultssites.text)
 
 
 dict_data = []
+dict_sites = {}
 
 for site in sites:
     if search(regex_sitename, site['name']):
@@ -62,7 +60,13 @@ for site in sites:
         if not search(regex_empty, str(devices)):
             print(site['name'])
             site_name = site['name'] + "\n"
-            file_report.write(site_name)
+            dict_site = {
+                "site_name": site['name'],
+                "site_tags": [],
+            }
+
+            dict_sites[site['name']] = {}
+
 
         #Get tags on site
         tags_url = "{}/sites/{}/wxtags".format(base_url, site["id"])
@@ -81,10 +85,6 @@ for site in sites:
             device_lookup[device_id] = device_name
             device_lookup_mac[device_id] = device_mac
 
-        #print (device_lookup)
-
-
-
         for tag in tags:
             #Logs ID and name
             logging.info(tag['name'])
@@ -95,7 +95,7 @@ for site in sites:
                 #Logs AP ID
                 logging.info('AP-ID:')
                 logging.info(ap)
-                #print(device_lookup[ap])
+
                 numberaps += 1
 
                 dict = {
@@ -108,22 +108,31 @@ for site in sites:
             if numberaps != 0:
                 print(tag['name'], " ", numberaps)
                 forvaltning_ap = tag['name'] + " " + str(numberaps) + "\n"
-                file_report.write(forvaltning_ap)
-#print(dict_data)
-file_report.close()
+                dict_sites[site['name']][tag['name']] = int(numberaps)
+
 
 column_headers = ["device_name", "device_tag", "device_adress", "device_mac"]
 
+df_aps = pandas.DataFrame(dict_data)
+
+df_sites = pandas.DataFrame(dict_sites)
+df_sites_t = df_sites.transpose()
+print(df_sites_t)
 try:
-    with open(report_file_ap, 'w', newline='', encoding="utf8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=column_headers)
-        writer.writeheader()
+    with pandas.ExcelWriter(report_file) as writer:
+                            df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
+                            df_aps.to_excel(
+                                writer, sheet_name='APs', index=False, freeze_panes=(1, 0), engine='xlsxwriter')
+                            workbook = writer.book
+                            worksheet_sites = writer.sheets['Sites']
+                            worksheet_aps = writer.sheets['APs']
+                            worksheet_sites.set_column('A:A', 40)
+                            worksheet_sites.set_column('B:V', 5)
+                            worksheet_aps.set_column('A:A', 40)
+                            worksheet_aps.set_column('B:B', 12)
+                            worksheet_aps.set_column('C:C', 40)
+                            worksheet_aps.set_column('D:D', 14)
+except Exception as e:
+    print(e)
 
-        for dict in dict_data:
-            writer.writerow(dict)
 
-except IOError as err:
-    logging.error("CSV I/O error: {}".format(err))
-    #print(tag['name'], " ",numberaps)
-    #for device in devices:
-    #print(device['name'], ">", device["id"], ">", )
