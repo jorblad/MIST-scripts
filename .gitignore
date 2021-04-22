@@ -1,6 +1,6 @@
 # Private Configuration
 config.yaml
-import-test.xlsx
+*import-test.xlsx
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
