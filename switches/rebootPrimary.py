@@ -1,7 +1,7 @@
 import paramiko
 import yaml
 
-with open('Switches/config.yaml') as f:
+with open('switches/config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 switch_username = config['switch']['username']

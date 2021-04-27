@@ -12,6 +12,7 @@ import json
 import yaml
 import pandas
 import re
+import os
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='SiteImport.log',
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     # Establish Mist session
     admin = Admin(mist_api_token)
 
-    # Convert CSV to valid JSON
+    # Convert excel to valid JSON
     excel_data_df = pandas.read_excel(import_file, sheet_name=import_file_sheet)
 
     data = excel_data_df.to_dict(orient='records')
@@ -307,7 +308,7 @@ if __name__ == '__main__':
                 print('\n\n==========\n\n')
             site_verksamhet = result['id']
             print('\n\n==========\n\n')
-#Takes the field from the csv-file and create the site from that
+        #Takes the field from the excel-file and create the site from that
         site = {
             'name': "{} ({})".format(d.get('Gatuadress'), d.get('Forkortning')),
             "sitegroup_ids": [
@@ -318,6 +319,7 @@ if __name__ == '__main__':
             }
 
         # Provide your Site Setting.
+        #Modify if anything you need is missing otherwise change in config.yaml will work best
         # Example can be found here: https://api.mist.com/api/v1/docs/Site#site-setting
         '''
         ie:
@@ -484,5 +486,43 @@ if __name__ == '__main__':
                 logging.debug(json.dumps(result, sort_keys=True, indent=4))
 
         print('\n\n==========\n\n')
+
+        # Import map
+        if d.get('MapURL'):
+            map_url = str(d.get('MapURL'))
+            map_import_url = "{}/sites/{}/maps/import".format(base_url, site_id)
+            map_import_headers = {
+                'Authorization': f'token {mist_api_token}'
+            }
+            print('Calling the Mist import map API...')
+            logging.info('Calling the Mist import map API...')
+            map_import_payload = {"vendor_name": "ekahau", "import_all_floorplans": True, "import_height": True, "import_orientation": True}
+            files = {
+                'file': (os.path.basename(map_url), open(map_url, 'rb'), 'application/octet-stream'),
+                'json': (None, json.dumps(map_import_payload), 'application/json')
+            }
+
+            response = requests.post(map_import_url, files=files, headers=map_import_headers)
+
+            print(response.text)
+
+            print(response)
+            if response == False:
+                print('Failed to import map for {} ({})'.format(
+                    site['name'], site_id))
+                logging.warning('Failed to import map for {} ({})'.format(
+                    site['name'], site_id))
+            else:
+                print('Imported map for {} ({})'.format(site['name'], site_id))
+                logging.info('Imported map for {} ({})'.format(
+                    site['name'], site_id))
+
+                if show_more_details:
+                    print('\nRetrieving the JSON response object...')
+                    logging.info('\nRetrieving the JSON response object...')
+                    #print(json.dumps(result, sort_keys=True, indent=4))
+                    logging.debug(json.dumps(result, sort_keys=True, indent=4))
+
+            print('\n\n==========\n\n')
 
     print('Created {} sites'.format(number_sites))

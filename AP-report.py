@@ -123,7 +123,6 @@ try:
                             df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
                             df_aps.to_excel(
                                 writer, sheet_name='APs', index=False, freeze_panes=(1, 0), engine='xlsxwriter')
-                            workbook = writer.book
                             worksheet_sites = writer.sheets['Sites']
                             worksheet_aps = writer.sheets['APs']
                             worksheet_sites.set_column('A:A', 40)

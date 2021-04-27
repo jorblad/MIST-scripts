@@ -1,6 +1,8 @@
 # Private Configuration
 config.yaml
 *import-test.xlsx
+SiteImport.log
+lab/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
