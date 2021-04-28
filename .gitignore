@@ -1,6 +1,6 @@
 # Private Configuration
 config.yaml
-*import-test.xlsx
+*import-test.*
 SiteImport.log
 lab/*
 
