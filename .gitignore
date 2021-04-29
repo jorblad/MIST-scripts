@@ -3,6 +3,7 @@ config.yaml
 *import-test.*
 SiteImport.log
 lab/*
+*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -133,3 +134,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.vscode/sftp.json
