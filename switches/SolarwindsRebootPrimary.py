@@ -25,22 +25,23 @@ def rebootPrimary(switch_ip):
         "auth_strict_key": False,
         "platform": "juniper_junos"
     }
+    logging.info("Logging in to switch {}".format(switch_ip))
     conn = Scrapli(**device)
     conn.open()
     response = conn.send_command("request system configuration rescue save")
     response = conn.send_interactive(
         [
-            ("request system reboot at 22", "Reboot the system ", False),
+            ("request system reboot slice alternate media internal at 22",
+             "Reboot the system ", False),
             ("yes", "", False)
         ]
     )
-    print(response.elapsed_time)
-    print(response.result)
+    logging.info(response.elapsed_time)
+    logging.info(response.result)
     if 'Shutdown at' in response.result:
         return True
     else:
         return False
-    logging.info("Logging in to switch {}".format(switch_ip))
     conn.close()
 
 
@@ -71,6 +72,6 @@ for switch in switches:
             "IP-address": switch['IPAddress'],
             "Status": "Failed"
         }
-print(dict_switches)
+logging.info(dict_switches)
 
 
