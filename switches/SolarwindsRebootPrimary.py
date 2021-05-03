@@ -1,6 +1,11 @@
 import requests
 import orionsdk
 import yaml
+import json
+#Email imports
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from scrapli import Scrapli
 
@@ -16,6 +21,18 @@ solarwinds_username = config['solarwinds']['username']
 solarwinds_password = config['solarwinds']['password']
 solarwinds_certificate = config['solarwinds']['certificate_file']
 
+#email settings
+smtp_port = config['email']['smtp_port']
+smtp_server = config['email']['smtp_server']
+smtp_login = config['email']['smtp_username']
+smtp_password = config['email']['smtp_password']
+sender_email = config['email']['sender_email']
+receiver_email = config['email']['receiver_email']
+message = MIMEMultipart("alternative")
+message["Subject"] = "Netscript Juniper boot backup"
+message["From"] = sender_email
+message["To"] = receiver_email
+
 
 def rebootPrimary(switch_ip):
     device = {
@@ -28,7 +45,6 @@ def rebootPrimary(switch_ip):
     logging.info("Logging in to switch {}".format(switch_ip))
     conn = Scrapli(**device)
     conn.open()
-    response = conn.send_command("request system configuration rescue save")
     response = conn.send_interactive(
         [
             ("request system reboot slice alternate media internal at 22",
@@ -52,12 +68,12 @@ logging.info("Connecting to Solarwinds")
 swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
                            solarwinds_password, verify=False, session=session)
 logging.info("Getting switches that need to reboot")
-nodes = swis.query("SELECT NodeID, Caption, IPAddress, Status, Nodes.CustomProperties.jun_bootpart FROM Orion.Nodes WHERE Caption LIKE 'swa%' AND Nodes.CustomProperties.jun_bootpart LIKE 'backup%'")
+nodes = swis.query("SELECT NodeID, Caption, IPAddress, Status, Nodes.CustomProperties.jun_bootpart FROM Orion.Nodes WHERE Nodes.CustomProperties.jun_bootpart LIKE 'backup%'")
 
 switches = nodes['results']
 logging.debug(switches)
 
-dict_switches = {}
+dict_switches = []
 
 for switch in switches:
     if rebootPrimary(switch['IPAddress']):
@@ -72,6 +88,33 @@ for switch in switches:
             "IP-address": switch['IPAddress'],
             "Status": "Failed"
         }
-logging.info(dict_switches)
+logging.info(json.dumps(dict_switches, indent=2, default=str))
+#Mail the result
+# write the plain text part
+text = """\
+Hej
+Följande switchar har hittats som har bootat från backup-partitionen
+"""
+# write the HTML part
+html = """\
+<html>
+  <body>
+    <p>Hej!<br>
+    <p> Följande switchar har hittats som har bootat från backup-partitionen</p>
+    <p> {} </p>
+  </body>
+</html>
+""".format(json.dumps(dict_switches, indent=2, default=str))
+# convert both parts to MIMEText objects and add them to the MIMEMultipart message
+part1 = MIMEText(text, "plain")
+part2 = MIMEText(html, "html")
+message.attach(part1)
+message.attach(part2)
+# send your email
+with smtplib.SMTP(smtp_server, smtp_port) as server:
+    server.login(smtp_login, smtp_password)
+    server.sendmail(
+        sender_email, receiver_email, message.as_string()
+    )
 
 
