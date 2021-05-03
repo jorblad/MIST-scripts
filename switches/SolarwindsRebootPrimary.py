@@ -2,6 +2,7 @@ import requests
 import orionsdk
 import yaml
 import json
+import pandas
 #Email imports
 import smtplib
 from email.mime.text import MIMEText
@@ -43,22 +44,28 @@ def rebootPrimary(switch_ip):
         "platform": "juniper_junos"
     }
     logging.info("Logging in to switch {}".format(switch_ip))
-    conn = Scrapli(**device)
-    conn.open()
-    response = conn.send_interactive(
-        [
-            ("request system reboot slice alternate media internal at 22",
-             "Reboot the system ", False),
-            ("yes", "", False)
-        ]
-    )
-    logging.info(response.elapsed_time)
-    logging.info(response.result)
-    if 'Shutdown at' in response.result:
-        return True
-    else:
+    try:
+        conn = Scrapli(**device)
+        conn.open()
+        response = conn.send_command("request system configuration rescue save")
+        response = conn.send_interactive(
+            [
+                ("request system reboot slice alternate media internal at 22",
+                "Reboot the system ", False),
+                ("yes", "", False)
+            ]
+        )
+        logging.info(response.elapsed_time)
+        logging.info(response.result)
+        if 'Shutdown at' in response.result:
+            return True
+        else:
+            return False
+        conn.close()
+    except:
+        logging.warning("Couldn't reboot switch {}".format(switch_ip))
+        print("Couldn't reboot switch {}".format(switch_ip))
         return False
-    conn.close()
 
 
 
@@ -91,6 +98,9 @@ for switch in switches:
         }
         dict_switches.append(dict_switch)
 logging.info(json.dumps(dict_switches, indent=2, default=str))
+
+df_switches = pandas.DataFrame(dict_switches)
+
 #Mail the result
 # write the plain text part
 text = """\
@@ -106,7 +116,7 @@ html = """\
     <p> {} </p>
   </body>
 </html>
-""".format(json.dumps(dict_switches, indent=2, default=str))
+""".format(df_switches.to_html())
 # convert both parts to MIMEText objects and add them to the MIMEMultipart message
 part1 = MIMEText(text, "plain")
 part2 = MIMEText(html, "html")
@@ -114,7 +124,6 @@ message.attach(part1)
 message.attach(part2)
 # send your email
 with smtplib.SMTP(smtp_server, smtp_port) as server:
-    server.login(smtp_login, smtp_password)
     server.sendmail(
         sender_email, receiver_email, message.as_string()
     )
