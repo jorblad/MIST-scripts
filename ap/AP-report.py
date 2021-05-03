@@ -5,14 +5,21 @@ import csv
 import time
 import yaml
 import pandas
+import os
 
 from datetime import datetime
 from re import search
 
+# import the corresponding modules for email
+import smtplib
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='ApPerAdress.log',
-                    encoding='utf-8', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='../logs/ApPerAdress.log', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
 with open('config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
@@ -36,11 +43,24 @@ regex_empty = "^\[\]$"
 
 report_file = '{}/{}{}.xlsx'.format(config['report']['file_path'], config['report']
                                     ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+report_file_name = os.path.basename(report_file)
 
 sites_url = "{}/orgs/{}/sites".format(base_url, org_id)
 
 resultssites = requests.get(sites_url, headers=headers)
 sites = json.loads(resultssites.text)
+
+#email settings
+smtp_port = config['email']['smtp_port']
+smtp_server = config['email']['smtp_server']
+smtp_login = config['email']['smtp_username']
+smtp_password = config['email']['smtp_password']
+sender_email = config['email']['sender_email']
+receiver_email = config['email']['receiver_email']
+message = MIMEMultipart("alternative")
+message["Subject"] = "Netscript AP-rapport"
+message["From"] = sender_email
+message["To"] = receiver_email
 
 
 dict_data = []
@@ -133,5 +153,53 @@ try:
                             worksheet_aps.set_column('D:D', 14)
 except Exception as e:
     print(e)
+
+#Mail the result
+# write the plain text part
+text = """\
+Godmorgon
+Här kommer månadens rapport med MIST-accesspunkter
+"""
+# write the HTML part
+html = """\
+<html>
+  <body>
+    <p>Godmorgon!<br>
+    <p> Här kommer månadens rapport med MIST-accesspunkter</p>
+  </body>
+</html>
+"""
+# convert both parts to MIMEText objects and add them to the MIMEMultipart message
+part1 = MIMEText(text, "plain")
+part2 = MIMEText(html, "html")
+
+# We assume that the file is in the directory where you run your Python script from
+with open(report_file, "rb") as attachment:
+    # The content type "application/octet-stream" means that a MIME attachment is a binary file
+    part = MIMEBase("application", "octet-stream")
+    part.set_payload(attachment.read())
+
+# Encode to base64
+encoders.encode_base64(part)
+
+# Add header
+part.add_header(
+    "Content-Disposition",
+    f"attachment; filename= {report_file_name}",
+)
+
+message.attach(part1)
+message.attach(part2)
+
+message.attach(part)
+text = message.as_string()
+
+# send your email
+with smtplib.SMTP(smtp_server, smtp_port) as server:
+    server.sendmail(
+        sender_email, receiver_email.split(','), message.as_string()
+    )
+
+
 
 

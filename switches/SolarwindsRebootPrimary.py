@@ -125,7 +125,7 @@ message.attach(part2)
 # send your email
 with smtplib.SMTP(smtp_server, smtp_port) as server:
     server.sendmail(
-        sender_email, receiver_email, message.as_string()
+        sender_email, receiver_email.split(','), message.as_string()
     )
 
 
