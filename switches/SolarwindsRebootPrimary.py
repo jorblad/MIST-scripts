@@ -77,17 +77,19 @@ dict_switches = []
 
 for switch in switches:
     if rebootPrimary(switch['IPAddress']):
-        dict_switches = {
+        dict_switch = {
             "Switchname": switch['Caption'],
             "IP-address": switch['IPAddress'],
             "Status": "Scheduled reboot at 22:00"
         }
+        dict_switches.append(dict_switch)
     else:
-        dict_switches = {
+        dict_switch = {
             "Switchname": switch['Caption'],
             "IP-address": switch['IPAddress'],
             "Status": "Failed"
         }
+        dict_switches.append(dict_switch)
 logging.info(json.dumps(dict_switches, indent=2, default=str))
 #Mail the result
 # write the plain text part
