@@ -123,9 +123,13 @@ part2 = MIMEText(html, "html")
 message.attach(part1)
 message.attach(part2)
 # send your email
-with smtplib.SMTP(smtp_server, smtp_port) as server:
-    server.sendmail(
-        sender_email, receiver_email.split(','), message.as_string()
-    )
+if dict_switches:
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.sendmail(
+            sender_email, receiver_email.split(','), message.as_string()
+        )
+else:
+    logging.info("No switches found")
+    print("No switches found")
 
 
