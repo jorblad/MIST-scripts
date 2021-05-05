@@ -130,6 +130,5 @@ if dict_switches:
         )
 else:
     logging.info("No switches found")
-    print("No switches found")
 
 

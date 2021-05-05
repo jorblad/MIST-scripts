@@ -19,9 +19,10 @@ from email.mime.text import MIMEText
 
 
 import logging
-logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', filename='../logs/ApPerAdress.log', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    filename='/opt/scripts/logs/ApPerAdress.log', level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
-with open('config.yaml') as f:
+with open('/opt/scripts/ap/config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 base_url = config['mist']['base_url']
