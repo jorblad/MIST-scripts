@@ -15,6 +15,8 @@ import re
 import os
 import orionsdk
 import xmltodict
+import glob
+
 
 from scrapli import Scrapli
 
@@ -30,6 +32,8 @@ with open('config.yaml') as f:
 import_file = config['import']['import_file']
 
 import_file_sheet = config['import']['import_sheet']
+
+import_path_ekahau = config['import']['import_ekahau_path']
 
 # Configure True/False to enable/disable additional logging of the API response objects
 show_more_details = config['import']['show_more_details']
@@ -563,10 +567,14 @@ if __name__ == '__main__':
                 logging.debug(json.dumps(result, sort_keys=True, indent=4))
 
         print('\n\n==========\n\n')
-
         # Import map
-        if d.get('MapURL'):
-            map_url = str(d.get('MapURL'))
+        try:
+            map_url = "{}/{}/*.esx".format(import_path_ekahau,
+                                        d.get('Gatuadress'))
+            print(map_url)
+            list_of_files = glob.glob(map_url)
+            map_file_url = max(list_of_files, key=os.path.getctime)
+            print(map_file_url)
             map_import_url = "{}/sites/{}/maps/import".format(base_url, site_id)
             map_import_headers = {
                 'Authorization': f'token {mist_api_token}'
@@ -575,7 +583,7 @@ if __name__ == '__main__':
             logging.info('Calling the Mist import map API...')
             map_import_payload = {"vendor_name": "ekahau", "import_all_floorplans": True, "import_height": True, "import_orientation": True}
             files = {
-                'file': (os.path.basename(map_url), open(map_url, 'rb'), 'application/octet-stream'),
+                'file': (os.path.basename(map_file_url), open(map_file_url, 'rb'), 'application/octet-stream'),
                 'json': (None, json.dumps(map_import_payload), 'application/json')
             }
 
@@ -601,6 +609,8 @@ if __name__ == '__main__':
                     logging.debug(json.dumps(result, sort_keys=True, indent=4))
 
             print('\n\n==========\n\n')
+        except:
+            print("Couldn't find a ekahau file")
 
         #Add Vlan to switches
         print('\n\n==========\n\n')
@@ -613,11 +623,14 @@ if __name__ == '__main__':
         logging.info("Getting switches that belong to the site")
         nodes = swis.query(
             "SELECT NodeID, Caption, IPAddress, Status FROM Orion.Nodes WHERE Caption LIKE 'swa-%-{}' AND Status LIKE 1".format(d.get('Forkortning')))
-
+        switch_number = 0
         switches = nodes['results']
         for switch in switches:
             print(switch)
             addVlansToSwitch(switch)
+            switch_number += 1
+
+        print("Updated settings on {} switches".format(switch_number))
 
 
     print('Created {} sites'.format(number_sites))

@@ -57,7 +57,7 @@ smtp_server = config['email']['smtp_server']
 smtp_login = config['email']['smtp_username']
 smtp_password = config['email']['smtp_password']
 sender_email = config['email']['sender_email']
-receiver_email = config['email']['receiver_email']
+receiver_email = config['report']['receiver_email']
 message = MIMEMultipart("alternative")
 message["Subject"] = "Netscript AP-rapport"
 message["From"] = sender_email
@@ -137,21 +137,25 @@ column_headers = ["device_name", "device_tag", "device_adress", "device_mac"]
 df_aps = pandas.DataFrame(dict_data)
 
 df_sites = pandas.DataFrame(dict_sites)
+df_sites['Totalt'] = df_sites.sum(axis=1)
 df_sites_t = df_sites.transpose()
+# append sums to the data frame
+
 print(df_sites_t)
 try:
     with pandas.ExcelWriter(report_file) as writer:
-                            df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
-                            df_aps.to_excel(
-                                writer, sheet_name='APs', index=False, freeze_panes=(1, 0), engine='xlsxwriter')
-                            worksheet_sites = writer.sheets['Sites']
-                            worksheet_aps = writer.sheets['APs']
-                            worksheet_sites.set_column('A:A', 40)
-                            worksheet_sites.set_column('B:V', 5)
-                            worksheet_aps.set_column('A:A', 40)
-                            worksheet_aps.set_column('B:B', 12)
-                            worksheet_aps.set_column('C:C', 40)
-                            worksheet_aps.set_column('D:D', 14)
+        df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
+        df_aps.to_excel(
+            writer, sheet_name='APs', index=False, freeze_panes=(1,0), engine='xlsxwriter')
+        worksheet_sites = writer.sheets['Sites']
+        worksheet_aps = writer.sheets['APs']
+        worksheet_sites.set_column('A:A', 40)
+        worksheet_sites.set_column('B:V', 5)
+        worksheet_aps.set_column('A:A', 40)
+        worksheet_aps.set_column('B:B', 12)
+        worksheet_aps.set_column('C:C', 40)
+        worksheet_aps.set_column('D:D', 14)
+
 except Exception as e:
     print(e)
 

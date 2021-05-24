@@ -116,7 +116,7 @@ html = """\
     <p> {} </p>
   </body>
 </html>
-""".format(df_switches.to_html())
+""".format(df_switches.to_html(index=False))
 # convert both parts to MIMEText objects and add them to the MIMEMultipart message
 part1 = MIMEText(text, "plain")
 part2 = MIMEText(html, "html")
