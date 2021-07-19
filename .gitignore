@@ -135,3 +135,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/sftp.json
+labels/config-backup.yaml
+labels/mac-adresses.csv
+labels/test.png
+labels/mac-adresses1.csv
