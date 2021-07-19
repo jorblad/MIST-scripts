@@ -3,6 +3,12 @@
 # main.py
 #
 # Update the script with the necessary information to create sites from a CSV file.
+from __future__ import division, print_function, absolute_import, unicode_literals
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 import sys
 import time
@@ -16,6 +22,12 @@ import os
 import orionsdk
 import xmltodict
 import glob
+
+import pprint as pp
+import sys
+import argparse
+import zipfile
+from collections import Counter
 
 
 from scrapli import Scrapli
@@ -47,6 +59,9 @@ mist_api_token = config['mist']['mist_token']
 org_id = config['mist']['org_id']  # Your Organization ID goes here
 
 base_url = config['mist']['base_url']
+
+printer_name = config['printing']['label_printer']
+label_file = config['printing']['file_name']
 
 authorization = "Token {}".format(mist_api_token)
 
@@ -247,6 +262,25 @@ class Google(object):
         return json.loads(response.text)
 
 
+def extract_esx_data(input_file):
+    project = {}
+    access_points = {}
+    try:
+        with zipfile.ZipFile(input_file, "r") as z:
+            if "project.json" in z.namelist():
+                with z.open("project.json") as f:
+                   data = f.read()
+                   project = json.loads(data.decode("utf-8"))
+            if "accessPoints.json" in z.namelist():
+                print("found accessPoints.json")
+                with z.open("accessPoints.json") as f:
+                   data = f.read()
+                   access_points = json.loads(data.decode("utf-8"))
+    except Exception as e:
+       print(e)
+    return project, access_points
+
+
 # Mist CRUD operations
 class Admin(object):
     def __init__(self, token=''):
@@ -420,8 +454,11 @@ if __name__ == '__main__':
                 "version": config['mist']['config']['auto_upgrade']['version'],
                 "time_of_day": config['mist']['config']['auto_upgrade']['time_of_day'],
                 "custom_versions": {
+                    "AP32": config['mist']['config']['auto_upgrade']['custom_versions']['AP32'],
+                    "AP32E": config['mist']['config']['auto_upgrade']['custom_versions']['AP32E'],
                     "AP33": config['mist']['config']['auto_upgrade']['custom_versions']['AP33'],
-                    "AP43": config['mist']['config']['auto_upgrade']['custom_versions']['AP43']
+                    "AP43": config['mist']['config']['auto_upgrade']['custom_versions']['AP43'],
+                    "AP43E": config['mist']['config']['auto_upgrade']['custom_versions']['AP43E']
                 },
                 "day_of_week": config['mist']['config']['auto_upgrade']['day_of_week']
             },
@@ -579,6 +616,7 @@ if __name__ == '__main__':
             map_import_headers = {
                 'Authorization': f'token {mist_api_token}'
             }
+
             print('Calling the Mist import map API...')
             logging.info('Calling the Mist import map API...')
             map_import_payload = {"vendor_name": "ekahau", "import_all_floorplans": True, "import_height": True, "import_orientation": True}
@@ -589,9 +627,43 @@ if __name__ == '__main__':
 
             response = requests.post(map_import_url, files=files, headers=map_import_headers)
 
-            print(response.text)
+            imported_aps = response.text
+            print(imported_aps)
+            #Getting the imported AP-modles to create packinglist
+            project, access_points = extract_esx_data(map_file_url)
 
-            print(response)
+            access_points = access_points['accessPoints']
+
+            ap_models = Counter(access_point['model'] for access_point in access_points if access_point.get('model'))
+            ap_models = dict(ap_models)
+            print(ap_models)
+            label_file_url = "{}/{}/{}".format(import_path_ekahau,
+                                        d.get('Gatuadress'),label_file)
+            label_title = str("{} - {}".format(d.get('Gatuadress'),d.get('Popularnamn')))
+            #Creating packinglist
+            styles = getSampleStyleSheet()
+            style = styles["BodyText"]
+            header = Paragraph(
+                "<bold><font size=15>{}</font></bold>".format(label_title), style)
+            canvas = Canvas(label_file_url, pagesize=(6.2 * cm, 4 * cm))
+            #canvas.drawString(0.1 * cm, 8.2 * cm, label_title)
+            aW = 6 * cm
+            aH = 3 * cm
+            w, h = header.wrap(aW, aH)
+            header.drawOn(canvas, 5, aH)
+            for ap_model in ap_models:
+                aH = aH - h
+                ap_model_str = str("{}: {}st".format(ap_model, ap_models[ap_model]))
+                ap_model_text = Paragraph(
+                "<font size=15>{}</font>".format(ap_model_str), style)
+                ap_model_text.wrap(aW, aH)
+                ap_model_text.drawOn(canvas, 5, aH)
+                aH = aH - h
+                #canvas.drawString(0.1 * cm, 0.2 * cm, ap_model_str)
+                print(ap_model_str)
+            #canvas.showPage()
+            canvas.save()
+
             if response == False:
                 print('Failed to import map for {} ({})'.format(
                     site['name'], site_id))
@@ -610,7 +682,7 @@ if __name__ == '__main__':
 
             print('\n\n==========\n\n')
         except:
-            print("Couldn't find a ekahau file")
+            print("Something is not working with ekahau import")
 
         #Add Vlan to switches
         print('\n\n==========\n\n')

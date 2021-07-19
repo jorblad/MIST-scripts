@@ -84,14 +84,14 @@ def checkPOEPort(switch_interface):
     response = conn.send_command(
         "show poe interface {}".format(switch_interface['PortName']))
     if '0.5W' in response.result:
-        print('AP-needs {} reboot'.format(ap['Caption']))
+        #print('AP-needs {} reboot'.format(ap['Caption']))
         logging.info('AP-needs {} reboot'.format(ap['Caption']))
         return True
     else:
         logging.info("Another fault troubleshoot {} connected to {} on {} with IP {}".format(
             ap['Caption'], switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
-        print("Another fault troubleshoot {} connected to {} on {} with IP {}".format(
-            ap['Caption'], switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
+        #print("Another fault troubleshoot {} connected to {} on {} with IP {}".format(
+        #    ap['Caption'], switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
         return False
 
 
@@ -139,8 +139,8 @@ def checkLink(switch_interface):
         try:
             logging.info("AP {} has ethernet link{} connected to {} on {} with IP {}".format(
                 ap['Caption'], switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
-            print("AP interface status admin: {} link: {}".format(interface_status.group(
-                'admin'), interface_status.group('link')))
+            #print("AP interface status admin: {} link: {}".format(interface_status.group(
+            #    'admin'), interface_status.group('link')))
             return True
         except:
             logging.info("AP has link but is down")
@@ -148,8 +148,8 @@ def checkLink(switch_interface):
     else:
         logging.info("AP has no ethernet link {} connected to {} on {} with IP {}".format(
             ap['Caption'], switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
-        print("AP interface status admin: {} link: {}".format(interface_status.group(
-            'admin'), interface_status.group('link')))
+        #print("AP interface status admin: {} link: {}".format(interface_status.group(
+        #    'admin'), interface_status.group('link')))
         return False
 
 
@@ -161,41 +161,47 @@ def checkCable(switch_interface):
         "auth_strict_key": False,
         "platform": "juniper_junos"
     }
-    logging.info("Logging in to switch {} with IP {}".format(
-        switch_interface['SwitchName'], switch_interface['SwitchIP']))
-    conn = Scrapli(**device)
-    conn.open()
-    interface_test_status = 'Started'
-    response = conn.send_command(
-        "request diagnostics tdr start interface {}".format(switch_interface['PortName']))
-    response = conn.send_command("show chassis hardware | display xml")
-    response_dict = xmltodict.parse(response.result)
-    response_json = json.dumps(response_dict)
-    switch_hardware = json.loads(response_json)[
-        'rpc-reply']['chassis-inventory']['chassis']
-    switch_model = switch_hardware['description']
-    print(switch_model)
-    if "EX2300" in switch_model:
-        while interface_test_status == 'Started':
-            response = conn.send_command(
-                "show diagnostics tdr interface {} | display xml".format(switch_interface['PortName']))
-            response_dict = xmltodict.parse(response.result)
-            response_json = json.dumps(response_dict)
-            interface_tdr = json.loads(response_json)
-            interface_test_status = interface_tdr[
-                'rpc-reply']['vct']['vct-interface-information-detail']['vct-interface-test-status']
-    elif "EX2200" in switch_model:
-        while interface_test_status == 'Started':
-            response = conn.send_command(
-                "show diagnostics tdr interface {} | display xml".format(switch_interface['PortName']))
-            response_dict = xmltodict.parse(response.result)
-            response_json = json.dumps(response_dict)
-            interface_tdr = json.loads(response_json)
-            interface_test_status = interface_tdr[
-                'rpc-reply']['tdr']['interface-information-detail']['interface-test-status']
-    response = conn.send_command(
-        "show diagnostics tdr interface {}".format(switch_interface['PortName']))
-    return response.result
+    try:
+        logging.info("Logging in to switch {} with IP {}".format(
+            switch_interface['SwitchName'], switch_interface['SwitchIP']))
+        conn = Scrapli(**device)
+        conn.open()
+        interface_test_status = 'Started'
+        response = conn.send_command(
+            "request diagnostics tdr start interface {}".format(switch_interface['PortName']))
+        response = conn.send_command("show chassis hardware | display xml")
+        switch_hardware_xml = str(response.result)
+        response_dict = xmltodict.parse(switch_hardware_xml)
+        response_json = json.dumps(response_dict)
+        switch_hardware = json.loads(response_json)[
+            'rpc-reply']['chassis-inventory']['chassis']
+        switch_model = switch_hardware['description']
+        #print(switch_model)
+        if "EX2300" in switch_model:
+            while interface_test_status == 'Started':
+                response = conn.send_command(
+                    "show diagnostics tdr interface {} | display xml".format(switch_interface['PortName']))
+                response_dict = xmltodict.parse(response.result)
+                response_json = json.dumps(response_dict)
+                interface_tdr = json.loads(response_json)
+                interface_test_status = interface_tdr[
+                    'rpc-reply']['vct']['vct-interface-information-detail']['vct-interface-test-status']
+        elif "EX2200" in switch_model:
+            while interface_test_status == 'Started':
+                response = conn.send_command(
+                    "show diagnostics tdr interface {} | display xml".format(switch_interface['PortName']))
+                response_dict = xmltodict.parse(response.result)
+                response_json = json.dumps(response_dict)
+                interface_tdr = json.loads(response_json)
+                interface_test_status = interface_tdr[
+                    'rpc-reply']['tdr']['interface-information-detail']['interface-test-status']
+        response = conn.send_command(
+            "show diagnostics tdr interface {}".format(switch_interface['PortName']))
+        return response.result
+    except:
+        #print("interface test didn't work", sys.exc_info()[0])
+        return response.result
+
 
 
 def checkVlanAPmgm(switch_interface):
@@ -216,7 +222,7 @@ def checkVlanAPmgm(switch_interface):
     switch_hardware = json.loads(response_json)[
         'rpc-reply']['chassis-inventory']['chassis']
     switch_model = switch_hardware['description']
-    print(switch_model)
+    #print(switch_model)
     if "EX2300" in switch_model:
         response = conn.send_command(
             "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
@@ -238,7 +244,7 @@ def checkVlanAPmgm(switch_interface):
         interface_vlans = json.loads(response_json)
         interface_vlan_apmgm = interface_vlans['rpc-reply']['switching-interface-information'][
             'interface']['interface-vlan-member-list']
-        print(interface_vlan_apmgm['interface-vlan-member'])
+        #print(interface_vlan_apmgm['interface-vlan-member'])
         if isinstance(interface_vlan_apmgm, list):
             for interface_vlan_member in interface_vlan_apmgm:
                 if interface_vlan_member['interface-vlan-member']['interface-vlan-name'] == 'apmgm' and interface_vlan_member['interface-vlan-member']['interface-vlan-member-tagness'] == 'untagged':
@@ -271,7 +277,7 @@ def fixVlanAPmgm(switch_interface):
     switch_hardware = json.loads(response_json)[
         'rpc-reply']['chassis-inventory']['chassis']
     switch_model = switch_hardware['description']
-    print(switch_model)
+    #print(switch_model)
     if 'EX2300' in switch_model:
         response = conn.send_command(
             "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
@@ -297,7 +303,7 @@ def fixVlanAPmgm(switch_interface):
             switch_interface_vlan = interface_vlan_apmgm['interface-vlan-name']
         except:
             switch_interface_vlan = 'downlink'
-        print(interface_vlan_apmgm)
+        #print(interface_vlan_apmgm)
 
         #for interface_vlan in interface_vlan_apmgm:
         #    if interface_vlan['interface-vlan-member-tagness'] == 'untagged':
@@ -324,18 +330,18 @@ nodes = swis.query(
 
 aps = nodes['results']
 
-print(aps)
+#print(aps)
 
 dict_aps = []
 
 for ap in aps:
-    print(ap['Caption'])
+    #print(ap['Caption'])
     port_nodes = ''
     port_nodes = swis.query(
         "SELECT DISTINCT TOP 100 Port.Name AS PortName, Nodes.Caption AS SwitchName, Nodes.IPAddress AS SwitchIP, Nodes.Status AS SwitchStatus, PortToEndpointHistory.ConnectionType FROM Orion.UDT.IPAddressHistory INNER JOIN Orion.UDT.PortToEndpointHistory ON IPAddressHistory.EndpointID=PortToEndpointHistory.EndpointID INNER JOIN Orion.UDT.Port ON PortToEndpointHistory.PortID=Port.PortID INNER JOIN Orion.Nodes ON Port.NodeID=Nodes.NodeID WHERE IPAddressHistory.IPAddress LIKE '{}' AND SwitchName LIKE 'swa-%' AND PortName LIKE 'ge-%/0/%' AND PortToEndpointHistory.ConnectionType LIKE '1'".format(ap['IPAddress']))
     switch_interfaces = port_nodes['results']
     if not switch_interfaces:
-        print("Can't find switch-interface for {}".format(ap['Caption']))
+        #print("Can't find switch-interface for {}".format(ap['Caption']))
         logging.info(
             "Can't find switch-interface for {}".format(ap['Caption']))
 
@@ -362,7 +368,7 @@ for ap in aps:
                 "problem": "Can't find a switchport that isn't a uplink",
                 "solution": ""
             }
-            print(switch_interface)
+            #print(switch_interface)
 
             if checkPOEPort(switch_interface):
                 bouncePOE(switch_interface)
@@ -419,6 +425,7 @@ for ap in aps:
             else:
                 logging.warning("Ethernet link down but POE power draw on AP connected to {} at the switch {} with IP {}".format(
                     switch_interface['PortName'], switch_interface['SwitchName'], switch_interface['SwitchIP']))
+                cable_check = checkCable(switch_interface)
                 bouncePOE(switch_interface)
 
                 dict_ap = {
@@ -429,7 +436,7 @@ for ap in aps:
                     "switchIPAddress": switch_interface['SwitchIP'],
                     "poe": checkPOEPower(switch_interface),
                     "problem": "Ethernet link down but POE power draw",
-                    "solution": "{}".format(checkCable(switch_interface))
+                    "solution": "{}".format(cable_check)
                 }
 
     dict_aps.append(dict_ap)
@@ -437,7 +444,7 @@ for ap in aps:
 logging.info(json.dumps(dict_aps, indent=2, default=str))
 
 df_aps = pandas.DataFrame(data=dict_aps)
-print(df_aps)
+#print(df_aps)
 
 #Mail the result
 # write the plain text part

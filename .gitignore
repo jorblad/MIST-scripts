@@ -4,7 +4,7 @@ config.yaml
 SiteImport.log
 lab/*
 *.log
-
+django-script/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

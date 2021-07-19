@@ -11,7 +11,6 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
 
 with open('/opt/scripts/ap/config.yaml') as f:
     config = yaml.safe_load(f)
-
 #Regex for filtering out so that we only show sites that have a shortname
 # which is how we decide if a site is just for lab or a actual site
 regex_sitename = config['report']['regex_sitename']
@@ -43,6 +42,7 @@ json_update = json.dumps({
         "time_of_day": "02:00",
         "custom_versions": {
             "AP32": software_version,
+            "AP32E": software_version,
             "AP33": software_version,
             "AP43": software_version,
             "AP43E": software_version
@@ -50,6 +50,17 @@ json_update = json.dumps({
         "day_of_week": ""
     }
 })
+
+config['mist']['config']['auto_upgrade']['custom_versions']['AP32'] = software_version
+config['mist']['config']['auto_upgrade']['custom_versions']['AP32E'] = software_version
+config['mist']['config']['auto_upgrade']['custom_versions']['AP33'] = software_version
+config['mist']['config']['auto_upgrade']['custom_versions']['AP43'] = software_version
+config['mist']['config']['auto_upgrade']['custom_versions']['AP43E'] = software_version
+
+
+with open('/opt/scripts/ap/config.yaml', 'w') as f:
+    config = yaml.dump(config, f,
+                       default_flow_style=False, sort_keys=False)
 
 print(json.dumps(json_update))
 

@@ -69,6 +69,14 @@ dict_sites = {}
 
 for site in sites:
     if search(regex_sitename, site['name']):
+        #print(site)
+        for sitegroup in site['sitegroup_ids']:
+            #print(sitegroup)
+            sitegroup_url = "{}/orgs/{}/sitegroups/{}".format(base_url, org_id, sitegroup)
+            resultsitegroup = requests.get(sitegroup_url, headers=headers)
+            sitegroups = json.loads(resultsitegroup.text)
+            sitegroup_name = sitegroups['name']
+
 
         #Log name and ID to file
         logging.info(site['name'])
@@ -79,7 +87,6 @@ for site in sites:
         resultsdevices = requests.get(device_url, headers=headers)
         devices = json.loads(resultsdevices.text)
         if not search(regex_empty, str(devices)):
-            print(site['name'])
             site_name = site['name'] + "\n"
             dict_site = {
                 "site_name": site['name'],
@@ -105,31 +112,51 @@ for site in sites:
 
             device_lookup[device_id] = device_name
             device_lookup_mac[device_id] = device_mac
+        try:
+            for tag in tags:
+                #Logs ID and name
+                logging.info(tag['name'])
+                logging.info('Tag-ID:')
+                logging.info(tag['id'])
+                for ap in tag['values']:
+                    #Logs AP ID
+                    logging.info('AP-ID:')
+                    logging.info(ap)
+                    if tag['name'] in dict_sites[site['name']]:
+                        dict_sites[site['name']][tag['name']] += 1
+                    else:
+                        dict_sites[site['name']][tag['name']] = 1
 
-        for tag in tags:
-            #Logs ID and name
-            logging.info(tag['name'])
-            logging.info('Tag-ID:')
-            logging.info(tag['id'])
-            numberaps = 0
-            for ap in tag['values']:
-                #Logs AP ID
-                logging.info('AP-ID:')
-                logging.info(ap)
+                    dict = {
+                        "device_name": device_lookup[ap],
+                        "device_tag": tag['name'],
+                        "device_adress": site['name'],
+                        "device_mac": device_lookup_mac[ap],
+                    }
+                    dict_data.append(dict)
+                    device_lookup.pop(ap, None)
+            for ap in device_lookup:
+                    #Logs AP ID
+                    logging.info('AP-ID:')
+                    logging.info(ap)
+                    if sitegroup_name in dict_sites[site['name']]:
+                        dict_sites[site['name']][sitegroup_name] += 1
+                    else:
+                        dict_sites[site['name']][sitegroup_name] = 1
+                    dict = {
+                        "device_name": device_lookup[ap],
+                        "device_tag": sitegroup_name,
+                        "device_adress": site['name'],
+                        "device_mac": device_lookup_mac[ap],
+                    }
 
-                numberaps += 1
-
-                dict = {
-                    "device_name": device_lookup[ap],
-                    "device_tag": tag['name'],
-                    "device_adress": site['name'],
-                    "device_mac": device_lookup_mac[ap],
-                }
-                dict_data.append(dict)
             if numberaps != 0:
-                print(tag['name'], " ", numberaps)
                 forvaltning_ap = tag['name'] + " " + str(numberaps) + "\n"
-                dict_sites[site['name']][tag['name']] = int(numberaps)
+                #dict_sites[site['name']][tag['name']] = int(numberaps)
+
+        except:
+            pass
+
 
 
 column_headers = ["device_name", "device_tag", "device_adress", "device_mac"]
@@ -141,7 +168,6 @@ df_sites['Totalt'] = df_sites.sum(axis=1)
 df_sites_t = df_sites.transpose()
 # append sums to the data frame
 
-print(df_sites_t)
 try:
     with pandas.ExcelWriter(report_file) as writer:
         df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
@@ -200,10 +226,10 @@ message.attach(part)
 text = message.as_string()
 
 # send your email
-with smtplib.SMTP(smtp_server, smtp_port) as server:
-    server.sendmail(
-        sender_email, receiver_email.split(','), message.as_string()
-    )
+#with smtplib.SMTP(smtp_server, smtp_port) as server:
+#    server.sendmail(
+#        sender_email, receiver_email.split(','), message.as_string()
+#    )
 
 
 
