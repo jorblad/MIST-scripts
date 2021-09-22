@@ -226,10 +226,10 @@ message.attach(part)
 text = message.as_string()
 
 # send your email
-#with smtplib.SMTP(smtp_server, smtp_port) as server:
-#    server.sendmail(
-#        sender_email, receiver_email.split(','), message.as_string()
-#    )
+with smtplib.SMTP(smtp_server, smtp_port) as server:
+    server.sendmail(
+        sender_email, receiver_email.split(','), message.as_string()
+    )
 
 
 

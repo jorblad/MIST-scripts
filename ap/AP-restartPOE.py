@@ -223,39 +223,37 @@ def checkVlanAPmgm(switch_interface):
         'rpc-reply']['chassis-inventory']['chassis']
     switch_model = switch_hardware['description']
     #print(switch_model)
-    if "EX2300" in switch_model:
-        response = conn.send_command(
-            "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
-        response_dict = xmltodict.parse(response.result)
-        response_json = json.dumps(response_dict)
-        interface_vlans = json.loads(response_json)
-        interface_vlan_apmgm = interface_vlans['rpc-reply']['l2ng-l2ald-iff-interface-information'][
-            'l2ng-l2ald-iff-interface-entry']['l2ng-l2ald-iff-interface-entry']
-        #print(interface_vlan_apmgm)
-        for interface_vlan in interface_vlan_apmgm:
-            if interface_vlan['l2iff-interface-vlan-name'] == 'apmgm' and interface_vlan['l2iff-interface-vlan-member-tagness'] == 'untagged':
-                return True
-        return False
-    elif "EX2200" in switch_model:
-        response = conn.send_command(
-            "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
-        response_dict = xmltodict.parse(response.result)
-        response_json = json.dumps(response_dict)
-        interface_vlans = json.loads(response_json)
-        interface_vlan_apmgm = interface_vlans['rpc-reply']['switching-interface-information'][
-            'interface']['interface-vlan-member-list']
-        #print(interface_vlan_apmgm['interface-vlan-member'])
-        if isinstance(interface_vlan_apmgm, list):
-            for interface_vlan_member in interface_vlan_apmgm:
-                if interface_vlan_member['interface-vlan-member']['interface-vlan-name'] == 'apmgm' and interface_vlan_member['interface-vlan-member']['interface-vlan-member-tagness'] == 'untagged':
+    try:
+        if "EX2300" in switch_model:
+            response = conn.send_command(
+                "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
+            response_dict = xmltodict.parse(response.result)
+            response_json = json.dumps(response_dict)
+            interface_vlans = json.loads(response_json)
+            interface_vlan_apmgm = interface_vlans['rpc-reply']['l2ng-l2ald-iff-interface-information'][
+                'l2ng-l2ald-iff-interface-entry']['l2ng-l2ald-iff-interface-entry']
+            #print(interface_vlan_apmgm)
+            for interface_vlan in interface_vlan_apmgm:
+                if interface_vlan['l2iff-interface-vlan-name'] == 'apmgm' and interface_vlan['l2iff-interface-vlan-member-tagness'] == 'untagged':
                     return True
-        else:
-            if interface_vlan_apmgm['interface-vlan-member']['interface-vlan-name'] == 'apmgm' and interface_vlan_apmgm['interface-vlan-member']['interface-vlan-member-tagness'] == 'untagged':
-                return True
-        #print(interface_vlan_apmgm)
-        #for interface_vlan in interface_vlan_apmgm['interface-vlan-member']:
-            #if interface_vlan['interface-vlan-name'] == 'apmgm' and interface_vlan#['interface-vlan-member-tagness'] == 'untagged':
-            #    return True
+            return False
+        elif "EX2200" in switch_model:
+            response = conn.send_command(
+                "show ethernet-switching interface {} | display xml".format(switch_interface['PortName']))
+            response_dict = xmltodict.parse(response.result)
+            response_json = json.dumps(response_dict)
+            interface_vlans = json.loads(response_json)
+            interface_vlan_apmgm = interface_vlans['rpc-reply']['switching-interface-information'][
+                'interface']['interface-vlan-member-list']
+            #print(interface_vlan_apmgm['interface-vlan-member'])
+            if isinstance(interface_vlan_apmgm, list):
+                for interface_vlan_member in interface_vlan_apmgm:
+                    if interface_vlan_member['interface-vlan-member']['interface-vlan-name'] == 'apmgm' and interface_vlan_member['interface-vlan-member']['interface-vlan-member-tagness'] == 'untagged':
+                        return True
+            else:
+                if interface_vlan_apmgm['interface-vlan-member']['interface-vlan-name'] == 'apmgm' and interface_vlan_apmgm['interface-vlan-member']['interface-vlan-member-tagness'] == 'untagged':
+                    return True
+    except:
         return False
 
 
