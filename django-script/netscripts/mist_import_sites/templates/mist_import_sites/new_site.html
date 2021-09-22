@@ -1,0 +1,58 @@
+{% extends "mist_import_sites/base.html" %}
+
+{% block content %}
+
+    {{ formset.errors }}
+    {{ formset.non_field_errors }}
+    {{ form.errors }}
+    {{ form.non_field_errors }}
+    <div class="container">
+        <form action="" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <fieldset class="form-group">
+                <legend>
+                    <h1>Skapa ny adress i Mist</h1>
+                </legend>
+                {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+                <div class="row mb-3">
+                    <label for="gatuadress" class="col-sm-2 col-form-label">Gatuadress:</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" name="gatuadress" id="gatuadress" size=20 required placeholder="Gatuadress" autofocus>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="shortname" class="col-sm-2 col-form-label">Förkortning:</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" name="shortname" id="shortname" maxlength=4 size=4 required placeholder="Förkortning">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="popularnamn" class="col-sm-2 col-form-label">Populärnamn:</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" name="popularnamn" id="popularnamn" size=20 required placeholder="Populärnamn">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="verksamhet" class="col-sm-2 col-form-label">Verksamhet:</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" name="verksamhet" id="verksamhet" maxlength=4 size=4 required placeholder="Verksamhet">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label for="postnummer" class="col-sm-2 col-form-label">Postnummer:</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" name="postnummer" id="postnummer" size=6 maxlength="6" required placeholder="Postnummer">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label for="ekahau_file" class="col-sm-2 col-form-label">Ekahau-fil:</label>
+                    <div class="col-sm-10">
+                        <input type="file" class="form-control" name="ekahau_file" id="ekahau_file" accept=".esx">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Skapa</button>
+            </fieldset>
+        </form>
+    </div>
+{% endblock %}

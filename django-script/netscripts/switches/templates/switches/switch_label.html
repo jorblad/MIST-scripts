@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            .table td,
+            .table th {
+                font-size: 30px;
+            }
+            table.fixed { width:62mm; height:11mm; table-layout:fixed; }
+            table.fixed td { overflow: hidden; }
+            td div, th div{
+                page-break-inside: avoid;
+            }
+            @media print {
+            @page { margin: 0; }
+            body { margin: 2mm; }
+            }
+        </style>
+    </head>
+    <body>
+        <table class="fixed">
+            <col width="80px" />
+            <col width="52px" />
+            <tr>
+                <td><div>{{ switchnamn }}<br>{{ ip_adress }}</div></td>
+                <td><img src="https://chart.googleapis.com/chart?cht=qr&chl={{ip_adress}}&chs=50x50&chld=L|0" /></td>
+            </tr>
+        </table>
+    </body>
+</html>
+

@@ -4,9 +4,13 @@ config.yaml
 SiteImport.log
 lab/*
 *.log
-django-script/*
-django-script/djangoenv
-django-script/logs
+#django-script/*
+django-script/djangoenv/*
+django-script/logs/*
+settings.py
+shodan_api_app/*
+static/*
+swa-ex2300.conf
 
 
 # Byte-compiled / optimized / DLL files

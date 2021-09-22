@@ -1,0 +1,67 @@
+{% extends "mist_import_sites/base.html" %}
+
+{% block content %}
+
+{{ formset.errors }}
+{{ formset.non_field_errors }}
+{{ form.errors }}
+{{ form.non_field_errors }}
+
+{{ interfaces }}
+
+{% for row in interfaces.rows %}
+<tr>
+    {% for value in row %}
+    <td>{{value}}</td>
+    {% endfor %}
+</tr>
+{% endfor %}
+
+<div class="container">
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="form-group">
+            <legend>
+                <h1>Sök switch</h1>
+            </legend>
+            {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+                <div class="input-group col-md-6">
+                    <input type="text" class="form-control" name="switchnamn" id="switchnamn" size=20 required
+                        placeholder="Sök på IP eller switchnamn"  autofocus>
+                    <button type="submit" class="btn btn-outline-secondary">Sök</button>
+                </div>
+
+            </fieldset>
+    </form>
+
+    {% if nodes %}
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Switchnamn</th>
+                    <th>IP-adress</th>
+                    <th>Plats</th>
+                    <th>Status</th>
+                    <th>Konfigurera</th>
+                    <th>Ersätt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node in nodes %}
+                <tr>
+                    <td>{{ node.Caption }}</td>
+                    <td>{{ node.IPAddress }}</td>
+                    <td>{{ node.Location }}</td>
+                    <td>{{ node.Status }}</td>
+                    <td><a class="btn btn-primary" href="/switches/configure_switch/?ip={{ node.IPAddress }}&name={{ node.Caption }}"
+                            role="button">Konfigurera</a></td>
+                    <td><a class="btn btn-secondary" href="/switches/replace_switch/?ip={{ node.IPAddress }}&name={{ node.Caption }}" role="button">Ersätt</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    {% endif %}
+
+</div>
+{% endblock %}

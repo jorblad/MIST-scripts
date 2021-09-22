@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+            integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
+
+        <!--<style>
+            td div, th div{
+                page-break-inside: avoid;
+            }
+        </style>-->
+    </head>
+    <body>
+        <div class="row">
+            <div class="col-sm-1">
+                <table>
+                <tr><td>
+
+                <div class="card mx-auto" style="width: 20rem;">
+                    <h5 class="card-header">
+                        {{ conf.switchnamn }}
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">IP-adress: {{ conf.ip_adress }}</li>
+                        <li class="list-group-item">Modell: {{ switch_model }}</li>
+                        <li class="list-group-item">Gatuadress: {{ conf.gatuadress }}</li>
+                        {% if conf.popularnamn %}
+                            <li class="list-group-item">Populärnamn: {{ conf.popularnamn }}</li>
+                        {% endif %}
+                        {% if conf.plan %}
+                            <li class="list-group-item">Plan: {{ conf.plan }}</li>
+                        {% endif %}
+                        {% if conf.rum_nummer %}
+                            <li class="list-group-item">Rumsnummer: {{ conf.rum_nummer }}</li>
+                        {% endif %}
+                        {% if conf.rum_beskrivning %}
+                            <li class="list-group-item">Rumsbeskrivning: {{ conf.rum_beskrivning }}</li>
+                        {% endif %}
+                    </ul></td></tr>
+                <tr><td>
+                    <h5 class="card-header">
+                        Gammal switch
+                    </h5>
+                    <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th scope="col">Interface</th>
+                            <th scope="col">Vlan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for interface_range in conf.old_interfaces %}
+                            {% if interface_range.name != "access-ports" and '@inactive' not in interface_range%}
+                                    {% for interface in interface_range.member %}
+                                    <tr>
+                                        {% if interface_range.member.name %}
+                                            <td><div>{{ interface_range.member.name }}</div></td>
+                                        {% else %}
+                                            <td><div>{{ interface.name }}</div></td>
+                                        {% endif %}
+                                        <td><div>{{ interface_range.name }}</div></td>
+                                    </tr>
+                                    {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table></td>
+                </div>
+            </div>
+                <td><div class="col-sm-1">
+                  <div class="card mx-auto" style="width: 20rem;">
+                    <h5 class="card-header">
+                        Ny switch
+                    </h5>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">Interface</th>
+                                <th scope="col">Vlan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ap_interface in interfaces.AP %}
+                            <tr>
+                                <td><div>{{ ap_interface }}</div></td>
+                                <td><div>AP</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for device_interface in interfaces.device %}
+                            <tr>
+                                <td><div>{{ device_interface }}</div></td>
+                                <td><div>device</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for pub_interface in interfaces.pub %}
+                            <tr>
+                                <td><div>{{ pub_interface }}</div></td>
+                                <td><div>pub</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for klientklass1_interface in interfaces.klientklass1 %}
+                            <tr>
+                                <td><div>{{ klientklass1_interface }}</div></td>
+                                <td><div>klientklass1</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for klientklass2_interface in interfaces.klientklass2 %}
+                            <tr>
+                                <td><div>{{ klientklass2_interface }}</div></td>
+                                <td><div>klientklass2</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for downlink_interface in interfaces.downlink %}
+                            <tr>
+                                <td><div>{{ downlink_interface }}</div></td>
+                                <td><div>downlink</div></td>
+                            </tr>
+                            {% endfor %}
+                            {% for uplink_interface in interfaces.uplink %}
+                            <tr>
+                                <td><div>{{ uplink_interface }}</div></td>
+                                <td><div>uplink</div></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table></td></tr>
+                </div>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

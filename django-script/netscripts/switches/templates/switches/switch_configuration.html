@@ -1,0 +1,106 @@
+{% extends "mist_import_sites/base.html" %}
+
+{% block content %}
+
+{{ formset.errors }}
+{{ formset.non_field_errors }}
+{{ form.errors }}
+{{ form.non_field_errors }}
+
+{{ interfaces }}
+
+{% for row in interfaces.rows %}
+<tr>
+    {% for value in row %}
+    <td>{{value}}</td>
+    {% endfor %}
+</tr>
+{% endfor %}
+
+<div class="container">
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="form-group">
+            <legend>
+                <h1>Konfigurera switch</h1>
+            </legend>
+            {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="switchnamn" class="col-form-label">Switchnamn:</label>
+                    <input type="text" class="form-control" name="switchnamn" id="switchnamn" size=20 required
+                        placeholder="swa-xx01-rxxx-xxxx" autofocus value="{{ switch_conf.switch_name }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="gatuadress" class="col-form-label">Gatuadress:</label>
+                    <input type="text" class="form-control" name="gatuadress" id="gatuadress" size=20 required
+                        placeholder="Gatuadress" value="{{ switch_conf.switch_gatuadress }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="popularnamn" class="col-form-label">Populärnamn:</label>
+                    <input type="text" class="form-control" name="popularnamn" id="popularnamn" size=20
+                        placeholder="Populärnamn" value="{{ switch_conf.switch_popularadress }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="plan" class="col-form-label">Våningsplan:</label>
+                    <input type="text" class="form-control" name="plan" id="plan" size=20 placeholder="Plan 1"
+                        value="{{ switch_conf.switch_plan }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="rum_nummer" class="col-form-label">Rumsnummer:</label>
+                    <input type="text" class="form-control" name="rum_nummer" id="rum_nummer" size=20 placeholder="R123"
+                        value="{{ switch_conf.switch_rumsnummer }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="rum_beskrivning" class="col-form-label">Rumsbeskrivning:</label>
+                    <input type="text" class="form-control" name="rum_beskrivning" id="rum_beskrivning" size=20
+                        placeholder="Elnisch" value="{{ switch_conf.switch_rumsbeskrivning }}">
+
+                </div>
+                <div class="col-md-6">
+                    <label for="ip_adress" class="col-form-label">IP-adress:</label>
+                    <input type="text" class="form-control" name="ip_adress" id="ip_adress" minlength="7" maxlength="15"
+                        size="15" pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$"
+                        required placeholder="10.100.xx.xx" value="{{ switch_conf.switch_ip }}" readonly>
+                </div>
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Interface</th>
+                            <th>Interface-range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for interface in switch_conf.interface_dict %}
+                        <tr>
+                            <td>{{ interface.interface }}</td>
+                            <td>
+                                <select class="form-select" aria-label="interface_range" name="interface_{{ interface.interface }}">
+                                    {% for interface_range in switch_conf.switch_interfaces %}
+                                        {% if interface_range.name != "access-ports"%}
+                                            {% if interface_range.name == interface.interface_range%}
+                                                <option value="{{ interface_range.name }}" selected>
+                                                    {{ interface_range.name }}
+                                                </option>
+                                            {% else %}
+                                                <option value="{{ interface_range.name }}">
+                                                    {{ interface_range.name }}
+                                                </option>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                <button type="submit" class="btn btn-primary">Spara</button>
+            </div>
+
+
+        </fieldset>
+    </form>
+</div>
+{% endblock %}
