@@ -5,6 +5,10 @@ SiteImport.log
 lab/*
 *.log
 django-script/*
+django-script/djangoenv
+django-script/logs
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -137,5 +141,5 @@ dmypy.json
 .vscode/sftp.json
 labels/config-backup.yaml
 labels/mac-adresses.csv
-labels/test.png
 labels/mac-adresses1.csv
+labels/test.png
