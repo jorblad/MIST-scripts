@@ -634,11 +634,15 @@ def configure_switch(request):
                     if not interface_change['interface_range_active']:
                         response = conn.send_config(
                             "activate interfaces interface-range {}".format(interface_change['interface_range_new']))
-                    messages.success(request, interface_change)
+
                 except:
                     messages.error(request, "Kunde inte uppdatera interface-range")
             response = conn.send_config('commit confirmed comment "Netscript Config changes"')
             response = conn.send_config('commit')
+            if "commit complete" in response.result:
+                messages.success(request, interface_change)
+            else:
+                messages.error(request, response.result)
 
 
 
