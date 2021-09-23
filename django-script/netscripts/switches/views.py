@@ -1,3 +1,4 @@
+from django.contrib.messages.api import info
 from django.core.exceptions import AppRegistryNotReady
 from django.shortcuts import render
 from django.template import loader
@@ -376,14 +377,31 @@ def get_switch_conf(request, switch_ip, switch_name):
     uplink_interfaces = 'sfp'
     for switch_interface_range in switch_interfaces:
         if switch_interface_range['name'] == 'uplink':
-            if re.match('ge-0/0/\d*', str(switch_interface_range['member']['name'])):
-                uplink_interfaces = 'ge'
+            try:
+                if re.match('ge-0/0/\d*', str(switch_interface_range['member']['name'])):
+                    uplink_interfaces = 'ge'
+            except:
+                messages.warning(request, "Flera uplink-portar, en access-switch ska bara ha en")
 
         if switch_interface_range['name'] == 'downlink':
             downlink_interfaces = 0
             for donwlink_interface in switch_interface_range['member']:
                 if re.match('ge-0/0/\d*', str(donwlink_interface['name'])):
                     downlink_interfaces += 1
+            try:
+                switch_interface_range['member-range']
+                start_interface = re.search(
+                    "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                end_interface = re.search(
+                    "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                response = conn.send_config(
+                    "wildcard range set interfaces interface-range downlink member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                response = conn.send_config(
+                    "delete interfaces interface-range downlink member-range ge-0/0/{}".format(start_interface))
+                device_interfaces = len(
+                    switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+            except:
+                downlink_interfaces = len(switch_interface_range['member'])
 
 
         if switch_interface_range['name'] == 'ap':
@@ -391,7 +409,19 @@ def get_switch_conf(request, switch_ip, switch_name):
                 switch_interface_range['@inactive']
                 ap_interfaces = 0
             except:
-                ap_interfaces = len(switch_interface_range['member'])
+                try:
+                    switch_interface_range['member-range']
+                    start_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                    end_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                    response = conn.send_config(
+                        "wildcard range set interfaces interface-range ap member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                    response = conn.send_config(
+                        "delete interfaces interface-range ap member-range ge-0/0/{}".format(start_interface))
+                    ap_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+                except:
+                    ap_interfaces = len(switch_interface_range['member'])
 
 
         if switch_interface_range['name'] == 'device':
@@ -399,15 +429,55 @@ def get_switch_conf(request, switch_ip, switch_name):
                 switch_interface_range['@inactive']
                 device_interfaces = 0
             except:
-                device_interfaces = len(switch_interface_range['member'])
+                try:
+                    switch_interface_range['member-range']
+                    start_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                    end_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                    response = conn.send_config(
+                        "wildcard range set interfaces interface-range device member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                    response = conn.send_config(
+                        "delete interfaces interface-range device member-range ge-0/0/{}".format(start_interface))
+                    device_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+                except:
+                    device_interfaces = len(switch_interface_range['member'])
 
 
         if switch_interface_range['name'] == 'pub':
+            #messages.info(request, switch_interface_range['member-range'])
+            #messages.info(request, switch_interfaces)
             try:
                 switch_interface_range['@inactive']
                 pub_interfaces = 0
             except:
-                pub_interfaces = len(switch_interface_range['member'])
+                try:
+                    switch_interface_range['member-range']
+                    start_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                    end_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                    response = conn.send_config(
+                        "wildcard range set interfaces interface-range pub member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                    response = conn.send_config(
+                        "delete interfaces interface-range pub member-range ge-0/0/{}".format(start_interface))
+                    pub_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+                    #switch_interface_range['member'] = list(switch_interface_range['member'])
+                    #messages.info(request, type(
+                        #switch_interface_range['member']).__name__)
+                    #for interface in range(int(start_interface), (int(end_interface)+1)):
+
+                        #switch_interface_range['member'].append({
+                        #    'name': 'ge-0/0/{}'.format(interface)
+                        #})
+                    #messages.info(
+                            #request, switch_interface_range['member'])
+
+
+                        #switch_interface_range['member']
+                except:
+                    pub_interfaces = len(switch_interface_range['member'])
+                #pass
 
 
         if switch_interface_range['name'] == 'klientklass1':
@@ -415,7 +485,20 @@ def get_switch_conf(request, switch_ip, switch_name):
                 switch_interface_range['@inactive']
                 klientklass1_interfaces = 0
             except:
-                klientklass1_interfaces = len(switch_interface_range['member'])
+                try:
+                    switch_interface_range['member-range']
+                    start_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                    end_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                    response = conn.send_config(
+                        "wildcard range set interfaces interface-range klientklass1 member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                    response = conn.send_config(
+                        "delete interfaces interface-range klientklass1 member-range ge-0/0/{}".format(start_interface))
+                    device_interfaces = len(
+                        switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+                except:
+                    klientklass1_interfaces = len(switch_interface_range['member'])
 
 
         if switch_interface_range['name'] == 'klientklass2':
@@ -423,7 +506,20 @@ def get_switch_conf(request, switch_ip, switch_name):
                 switch_interface_range['@inactive']
                 klientklass2_interfaces = 0
             except:
-                klientklass2_interfaces = len(switch_interface_range['member'])
+                try:
+                    switch_interface_range['member-range']
+                    start_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
+                    end_interface = re.search(
+                        "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+                    response = conn.send_config(
+                        "wildcard range set interfaces interface-range klientklass2 member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+                    response = conn.send_config(
+                        "delete interfaces interface-range klientklass2 member-range ge-0/0/{}".format(start_interface))
+                    device_interfaces = len(
+                        switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
+                except:
+                    klientklass2_interfaces = len(switch_interface_range['member'])
 
     try:
         ap_interfaces
