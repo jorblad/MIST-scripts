@@ -546,6 +546,12 @@ def get_switch_conf(request, switch_ip, switch_name):
     except:
         klientklass2_interfaces = 0
 
+    response = conn.send_config(
+        "show interfaces | display xml")
+    switch_interfaces_dict = json.dumps(xmltodict.parse(response.result))
+    switch_interfaces = json.loads(switch_interfaces_dict)
+    switch_interfaces = switch_interfaces['rpc-reply']['configuration']['interfaces']['interface-range']
+
 
 
 
