@@ -742,7 +742,25 @@ def configure_switch(request):
             response = conn.send_config('commit confirmed comment "Netscript Config changes"')
             response = conn.send_config('commit')
             if "commit complete" in response.result:
-                messages.success(request, interface_change)
+                try:
+                    messages.success(request, interface_change)
+                except:
+                    messages.success(request, "Ändringar sparade")
+            elif "has no member" in response.result:
+                empty_interface_range = re.search(
+                    "(error: interface-range \')(\w*)(\' has no member)", response.result).group(2)
+                response = conn.send_config(
+                    "deactivate interfaces interface-range {}".format(empty_interface_range))
+                response = conn.send_config(
+                    'commit confirmed comment "Netscript Config changes"')
+                response = conn.send_config('commit')
+                if "commit complete" in response.result:
+                    try:
+                        messages.success(request, interface_change)
+                    except:
+                        messages.success(request, "Ändringar sparade")
+                else:
+                    messages.error(request, response.result)
             else:
                 messages.error(request, response.result)
 
@@ -755,6 +773,31 @@ def configure_switch(request):
             #    request, "Switch: {}, Uppdaterad".format(switchmodell))
             #except:
             #messages.error(request, "Ngt gick fel")
+
+            conn.close()
+
+            switch_ip = request.GET.get('ip', '')
+            switch_name = request.GET.get('name', '')
+            switch_conf = get_switch_conf(request, switch_ip, switch_name)
+            switch_interface_conf = []
+
+            #messages.success(request, switch_conf)
+
+            for interface_range in switch_conf['switch_interfaces']:
+                if interface_range['name'] != 'access-ports':
+                    try:
+                        if not isinstance(interface_range['member'], list):
+                            interface_range['member'] = [interface_range['member']]
+                        for interface_conf in interface_range['member']:
+                            #messages.success(request, "Interface: {} Interface-range: {}".format(interface_conf['name'], interface_range['name']))
+                            interface_conf_dict = {
+                                "interface": interface_conf['name'],
+                                "interface_range": interface_range['name']
+                            }
+                            switch_interface_conf.append(interface_conf_dict)
+                    except:
+                        pass
+            switch_conf['interface_dict'] = switch_interface_conf
 
             return render(request, 'switches/switch_configuration.html', {'form': form, 'switch_conf': switch_conf})
 
