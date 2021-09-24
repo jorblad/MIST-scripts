@@ -68,6 +68,8 @@
                         <tr>
                             <th>Interface</th>
                             <th>Interface-range</th>
+                            <th>Länk</th>
+                            <th>Oanvänd</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -90,6 +92,35 @@
                                         {% endif %}
                                     {% endfor %}
                                 </select>
+                            </td>
+
+
+                            {% for interface_terse in switch_conf.interfaces_terse %}
+                                {% if interface_terse.name == interface.interface%}
+
+                                    {% if interface_terse.oper_status == 'up'%}
+                                        <td style="background-color: darkgreen; color: white;">Uppe</td>
+                                    {% else %}
+                                        <td style="background-color: red; color: white;">Nere</td>
+                                    {% endif %}
+                                    {% for interface_unused in switch_conf.interfaces_unused %}
+                                        {% if interface.interface == interface_unused.Name %}
+                                            {% if interface_unused.DaysUnused == 'Never' and interface_terse.oper_status == 'down' %}
+                                                <td style="background-color: darkgreen; color: white;">Oanvänd</td>
+                                            {% elif interface_unused.DaysUnused == 'Never' %}
+                                                <td style="background-color: red; color: white;">Används</td>
+                                            {% else %}
+                                                <td style="background-color: red; color: white;">{{ interface_unused.DaysUnused }} dagar</td>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                            <!-- <td style="background-color: darkgreen;">
+
+                            </td>-->
+                            <td>
+
                             </td>
                         </tr>
                         {% endfor %}

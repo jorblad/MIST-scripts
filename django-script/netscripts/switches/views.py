@@ -552,6 +552,34 @@ def get_switch_conf(request, switch_ip, switch_name):
     switch_interfaces = json.loads(switch_interfaces_dict)
     switch_interfaces = switch_interfaces['rpc-reply']['configuration']['interfaces']['interface-range']
 
+    #Get link status for interfaces
+    response = conn.send_command(
+        "show interfaces terse | display xml")
+    switch_interfaces_terse_dict = json.dumps(xmltodict.parse(response.result))
+    switch_interfaces_terse = json.loads(switch_interfaces_terse_dict)
+    switch_interfaces_terse = switch_interfaces_terse[
+        'rpc-reply']['interface-information']['physical-interface']
+
+    switch_interfaces_terse_encoded = []
+    for interface_terse in switch_interfaces_terse:
+        switch_interfaces_terse_encoded.append(
+            {
+                'name': interface_terse['name'],
+                'admin_status': interface_terse['admin-status'],
+                'oper_status': interface_terse['oper-status'],
+            }
+        )
+
+    # Get unused ports
+    session = requests.Session()
+    session.timeout = 30  # Set your timeout in seconds
+    logging.info("Connecting to Solarwinds")
+    swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
+                               solarwinds_password, verify=False, session=session)
+    logging.info("Getting unused ports")
+    switch_interfaces_unused = swis.query(
+        "SELECT TOP 100 Caption, DNS, IpAddress, Name, PortDescription, DaysUnused FROM Orion.UDT.UnusedPorts WHERE Caption LIKE '{}'".format(switch_name))['results']
+
 
 
 
@@ -571,6 +599,8 @@ def get_switch_conf(request, switch_ip, switch_name):
         'pub_interfaces': pub_interfaces,
         'klientklass1_interfaces': klientklass1_interfaces,
         'klientklass2_interfaces': klientklass2_interfaces,
+        'interfaces_terse': switch_interfaces_terse_encoded,
+        'interfaces_unused': switch_interfaces_unused,
 
     }
     return switch_conf
