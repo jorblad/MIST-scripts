@@ -756,7 +756,7 @@ def configure_switch(request):
             snmp_location = "{}, {}, {}, {}, {}".format(cd['gatuadress'], cd['popularnamn'], cd['plan'], cd['rum_nummer'], cd['rum_beskrivning'])
             response = conn.send_config("set system host-name {}".format(cd['switchnamn']))
             response = conn.send_config(
-                "set snmp location {}".format(snmp_location))
+                'set snmp location "{}"'.format(snmp_location))
             for interface_change in interface_changes:
                 try:
                     response = conn.send_config(
