@@ -20,7 +20,7 @@ import xmltodict
 from scrapli import Scrapli
 
 
-from .forms import NewSwitch, SearchSwitch, ReplaceSwitch, ConfigureSwitch
+from .forms import NewSwitch, SearchSwitch, ReplaceSwitch, ConfigureSwitch, NewSwcSwitch, ReplaceSwcSwitch
 
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
@@ -56,6 +56,18 @@ def get_next_access_ip():
     nodes = swis.query(
         "SELECT TOP 65025 IPAddress FROM IPAM.IPNode WHERE Status=2 AND SubnetId LIKE '149'")
     return nodes['results']
+
+def get_next_edge_ip():
+    session = requests.Session()
+    session.timeout = 30  # Set your timeout in seconds
+    logging.info("Connecting to Solarwinds")
+    swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
+                               solarwinds_password, verify=False, session=session)
+    logging.info("Getting free IP-adresses")
+    nodes = swis.query(
+        "SELECT TOP 1022 IPAddress FROM IPAM.IPNode WHERE Status=2 AND SubnetId LIKE '2701'")
+    return nodes['results']
+
 
 def valid_ip(address):
     try:
@@ -317,6 +329,221 @@ def create_switch_conf(request, cd, source):
     return switchmodell
 
 
+def create_swc_switch_conf(request, cd, source):
+    antal_interfaces = int(cd['interface_ap']) + \
+        int(cd['interface_device']) + \
+        int(cd['interface_pub']) + \
+        int(cd['interface_klientklass1']) + \
+        int(cd['interface_klientklass2']) + \
+        int(cd['interface_cu_downlink'])
+
+    if antal_interfaces <= 10:
+        switchmodell = 'ex2300-c-12p'
+        if antal_interfaces != 10:
+            cd['interface_klientklass2'] = 10 - \
+                int(cd['interface_ap']) - int(cd['interface_device']) - int(cd['interface_pub']
+                                                                            ) - int(cd['interface_klientklass1']) - int(cd['interface_cu_downlink'])
+
+    elif antal_interfaces <= 22:
+        switchmodell = 'ex2300-24p'
+        if antal_interfaces != 22:
+            cd['interface_klientklass2'] = 22 - \
+                int(cd['interface_ap']) - int(cd['interface_device']) - int(cd['interface_pub']
+                                                                            ) - int(cd['interface_klientklass1']) - int(cd['interface_cu_downlink'])
+
+    elif antal_interfaces <= 46:
+        switchmodell = 'ex2300-48p'
+        if antal_interfaces != 46:
+            cd['interface_klientklass2'] = 46 - \
+                int(cd['interface_ap']) - int(cd['interface_device']) - int(cd['interface_pub']
+                                                                            ) - int(cd['interface_klientklass1']) - int(cd['interface_cu_downlink'])
+
+    else:
+        messages.error(request, 'Vi har inte så stora switchar')
+        return render(request, 'switches/new_switch.html', {'form': form})
+
+    if switchmodell == 'ex2300-c-12p':
+        interfaces = {
+            "AP": [],
+            "device": [],
+            "pub": [],
+            "klientklass1": [],
+            "klientklass2": [],
+            "downlink": [],
+            "uplink": ['ge-0/1/0', 'ge-0/1/1'],
+            "EP_convert": ['ge-0/0/10'],
+            "SP_convert": ['ge-0/0/11'],
+            "access_ports": [],
+        }
+    elif switchmodell == 'ex2300-24p':
+        interfaces = {
+            "AP": [],
+            "device": [],
+            "pub": [],
+            "klientklass1": [],
+            "klientklass2": [],
+            "downlink": ['ge-0/1/0', 'ge-0/1/1'],
+            "uplink": ['ge-0/1/2', 'ge-0/1/3'],
+            "EP_convert": ['ge-0/0/22'],
+            "SP_convert": ['ge-0/0/23'],
+            "access_ports": [],
+        }
+    else:
+        interfaces = {
+            "AP": [],
+            "device": [],
+            "pub": [],
+            "klientklass1": [],
+            "klientklass2": [],
+            "downlink": ['ge-0/1/0', 'ge-0/1/1'],
+            "uplink": ['ge-0/1/2', 'ge-0/1/3'],
+            "EP_convert": ['ge-0/0/46'],
+            "SP_convert": ['ge-0/0/47'],
+            "access_ports": [],
+        }
+
+    last_interface_number = 0
+
+    for i in range(0, int(cd['interface_ap'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['AP'].append(interface_name)
+        interfaces['access_ports'].append(interface_name)
+    try:
+        last_interface = interfaces['access_ports'][-1]
+        last_interface_number = 1 + \
+            int(re.search('ge-0/0/(\d*)', last_interface).group(1))
+    except:
+        last_interface_number = 0
+
+    for i in range(0, int(cd['interface_device'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['device'].append(interface_name)
+        interfaces['access_ports'].append(interface_name)
+
+    try:
+        last_interface = interfaces['access_ports'][-1]
+        last_interface_number = 1 + \
+            int(re.search('ge-0/0/(\d*)', last_interface).group(1))
+    except:
+        last_interface_number = 0
+
+    for i in range(0, int(cd['interface_pub'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['pub'].append(interface_name)
+        interfaces['access_ports'].append(interface_name)
+
+    try:
+        last_interface = interfaces['access_ports'][-1]
+        last_interface_number = 1 + \
+            int(re.search('ge-0/0/(\d*)', last_interface).group(1))
+    except:
+        last_interface_number = 0
+
+    for i in range(0, int(cd['interface_klientklass1'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['klientklass1'].append(interface_name)
+        interfaces['access_ports'].append(interface_name)
+
+    try:
+        last_interface = interfaces['access_ports'][-1]
+        last_interface_number = 1 + \
+            int(re.search('ge-0/0/(\d*)', last_interface).group(1))
+    except:
+        last_interface_number = 0
+
+    for i in range(0, int(cd['interface_klientklass2'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['klientklass2'].append(interface_name)
+        interfaces['access_ports'].append(interface_name)
+
+    try:
+        last_interface = interfaces['access_ports'][-1]
+        last_interface_number = 1 + \
+            int(re.search('ge-0/0/(\d*)', last_interface).group(1))
+    except:
+        last_interface_number = 0
+
+    for i in range(0, int(cd['interface_cu_downlink'])):
+        interface_number = i + last_interface_number
+        interface_name = "ge-0/0/{}".format(interface_number)
+        interfaces['downlink'].append(interface_name)
+
+    cd['gatuadress_uni'] = cd['gatuadress'].translate(unicode_table)
+    cd['popularnamn_uni'] = cd['popularnamn'].translate(unicode_table)
+    cd['plan_uni'] = cd['plan'].translate(unicode_table)
+    cd['rum_nummer_uni'] = cd['rum_nummer'].translate(unicode_table)
+    cd['rum_beskrivning_uni'] = cd['rum_beskrivning'].translate(
+        unicode_table)
+    cd['s_vlan_name'] = "s-{}".format(cd['switchnamn'][-4:])
+    context = {
+        "conf": cd,
+        "interfaces": interfaces,
+        "switch_model": switchmodell
+    }
+
+    if source == "new_switch":
+        template_table = loader.get_template(
+            'switches/switch_interfaces.html')
+
+    elif source == "replace_switch":
+        template_table = loader.get_template(
+            'switches/switch_interfaces_replacement.html')
+
+    else:
+        template_table = loader.get_template(
+            'switches/switch_interfaces.html')
+
+    template_ex2300 = loader.get_template('switches/swc-ex2300.conf')
+
+    template_label = loader.get_template('switches/switch_label.html')
+
+    fs = FileSystemStorage()
+    conf_file_url = "{}/{}/{}.conf".format(import_path_ekahau,
+                                           cd.get('gatuadress'), cd['switchnamn'])
+    interfaces_file_url = "{}/{}/{}".format(import_path_ekahau,
+                                            cd.get('gatuadress'), cd['switchnamn'])
+    try:
+        os.mkdir(os.path.join(
+            import_path_ekahau, cd.get('gatuadress')))
+    except:
+        pass
+
+    f = open(conf_file_url, "w")
+    f.write(template_ex2300.render(context))
+    f.close()
+
+    f_interfaces = open("{}.html".format(interfaces_file_url), "w")
+    f_interfaces.write(template_table.render(context))
+    f_interfaces.close()
+
+    pdfkit.from_file("{}.html".format(interfaces_file_url),
+                     "{}.pdf".format(interfaces_file_url))
+
+    f_switch_label = open(
+        "{}-label.html".format(interfaces_file_url), "w")
+    f_switch_label.write(template_label.render(cd))
+    f_switch_label.close()
+
+    label_options = {
+        'page-height': '12mm',
+        'page-width': '62mm',
+        'margin-top': '0',
+        'margin-bottom': '0',
+    }
+
+    pdfkit.from_file("{}-label.html".format(interfaces_file_url),
+                     "{}-label.pdf".format(interfaces_file_url), options=label_options)
+
+    #os.remove("{}.html".format(interfaces_file_url))
+    #os.remove("{}-label.html".format(interfaces_file_url))
+
+    return switchmodell
+
 
 def get_switch_conf(request, switch_ip, switch_name):
     device = {
@@ -381,13 +608,17 @@ def get_switch_conf(request, switch_ip, switch_name):
                 if re.match('ge-0/0/\d*', str(switch_interface_range['member']['name'])):
                     uplink_interfaces = 'ge'
             except:
-                messages.warning(request, "Flera uplink-portar, en access-switch ska bara ha en")
+                if "swa" in switch_name:
+                    messages.warning(request, "Flera uplink-portar, en access-switch ska bara ha en")
 
         if switch_interface_range['name'] == 'downlink':
             downlink_interfaces = 0
-            for donwlink_interface in switch_interface_range['member']:
-                if re.match('ge-0/0/\d*', str(donwlink_interface['name'])):
-                    downlink_interfaces += 1
+            try:
+                for donwlink_interface in switch_interface_range['member']:
+                    if re.match('ge-0/0/\d*', str(donwlink_interface['name'])):
+                        downlink_interfaces += 1
+            except:
+                pass
             try:
                 switch_interface_range['member-range']
                 start_interface = re.search(
@@ -643,6 +874,36 @@ def replace_switch(request):
     return render(request, 'switches/replace_switch.html', {'form': form, 'switch_conf': switch_conf})
 
 
+def replace_swc_switch(request):
+    template = loader.get_template('switches/replace_swc_switch.html')
+    form = ReplaceSwcSwitch()
+
+    switch_ip = request.GET.get('ip', '')
+    switch_name = request.GET.get('name', '').replace("swa-", "swc-", 1)
+    ny_ip_adress = get_next_edge_ip()
+    switch_conf = get_switch_conf(request, switch_ip, switch_name)
+
+    if request.method == 'POST':
+        form = ReplaceSwcSwitch(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            #try:
+            cd['old_interfaces'] = switch_conf['switch_interfaces']
+            #messages.success(request, cd['old_interfaces'])
+            switchmodell = create_swc_switch_conf(request, cd, 'replace_switch')
+            messages.success(
+                request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
+            #except:
+            #messages.error(request, "Ngt gick fel")
+
+            return render(request, 'switches/replace_swc_switch.html', {'form': form, 'switch_conf': switch_conf, 'IPadress': ny_ip_adress})
+
+        else:
+            messages.error(
+                request, 'Kontrollera att du har fyllt i alla fält')
+
+    return render(request, 'switches/replace_swc_switch.html', {'form': form, 'switch_conf': switch_conf, 'IPadress': ny_ip_adress})
+
 def search_switch(request):
     template = loader.get_template('switches/search_switch.html')
     form = SearchSwitch()
@@ -663,8 +924,9 @@ def search_switch(request):
                 nodes = swis.query(
                     "SELECT TOP 500  IPAddress, IPAddressType, Caption, NodeDescription, Description, Location, Status FROM Orion.Nodes WHERE IPAddress LIKE '{}'".format(cd['switchnamn']))['results']
             else:
+                cd['switchnamn'] = cd['switchnamn'].replace("swa-", "", 1).replace("swc-", "", 1)
                 nodes = swis.query(
-                    "SELECT TOP 500  IPAddress, IPAddressType, Caption, NodeDescription, Description, Location, Status FROM Orion.Nodes WHERE Caption LIKE 'swa-%{}%'".format(cd['switchnamn']))['results']
+                    "SELECT TOP 500  IPAddress, IPAddressType, Caption, NodeDescription, Description, Location, Status FROM Orion.Nodes WHERE Caption LIKE 'swa-%{}%' OR Caption LIKE 'swc-%{}%'".format(cd['switchnamn'], cd['switchnamn']))['results']
 
             #messages.success(request, nodes)
 
@@ -864,3 +1126,30 @@ def new_switch(request):
 
 
     return render(request, 'switches/new_switch.html', {'form': form, 'IPadress': ny_ip_adress})
+
+
+def new_swc_switch(request):
+    form = NewSwcSwitch()
+    template = loader.get_template('switches/new_swc_switch.html')
+    ny_ip_adress = get_next_edge_ip()
+    #messages.info(request, ny_ip_adress)
+
+    if request.method == 'POST':
+        form = NewSwcSwitch(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                switchmodell = create_swc_switch_conf(
+                    request, cd, 'new_switch')
+                messages.success(
+                    request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
+            except:
+                messages.error(request, "Ngt gick fel")
+
+            return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress})
+
+        else:
+            messages.error(
+                request, 'Kontrollera att du har fyllt i alla fält')
+
+    return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress})

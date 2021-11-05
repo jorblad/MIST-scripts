@@ -56,6 +56,8 @@
                     <td><a class="btn btn-primary" href="/switches/configure_switch/?ip={{ node.IPAddress }}&name={{ node.Caption }}"
                             role="button">Konfigurera</a></td>
                     <td><a class="btn btn-secondary" href="/switches/replace_switch/?ip={{ node.IPAddress }}&name={{ node.Caption }}" role="button">Ersätt</a></td>
+                    <td><a class="btn btn-secondary" href="/switches/replace_swc_switch/?ip={{ node.IPAddress }}&name={{ node.Caption }}"
+                            role="button">Ersätt med swc</a></td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -74,55 +74,54 @@
                     </thead>
                     <tbody>
                         {% for interface in switch_conf.interface_dict %}
-                        <tr>
-                            <td>{{ interface.interface }}</td>
-                            <td>
-                                <select class="form-select" aria-label="interface_range" name="interface_{{ interface.interface }}">
-                                    {% for interface_range in switch_conf.switch_interfaces %}
-                                        {% if interface_range.name != "access-ports"%}
-                                            {% if interface_range.name == interface.interface_range%}
-                                                <option value="{{ interface_range.name }}" selected>
-                                                    {{ interface_range.name }}
-                                                </option>
-                                            {% else %}
-                                                <option value="{{ interface_range.name }}">
-                                                    {{ interface_range.name }}
-                                                </option>
+                            {% if interface.interface_range != "EP_convert" and interface.interface_range != "SP_convert" %}
+                            <tr>
+                                <td>{{ interface.interface }}</td>
+                                <td>
+                                    <select class="form-select" aria-label="interface_range" name="interface_{{ interface.interface }}">
+                                        {% for interface_range in switch_conf.switch_interfaces %}
+                                            {% if interface_range.name != "access-ports" %}
+                                                {% if interface_range.name == interface.interface_range%}
+                                                    <option value="{{ interface_range.name }}" selected>
+                                                        {{ interface_range.name }}
+                                                    </option>
+                                                {% else %}
+                                                    <option value="{{ interface_range.name }}">
+                                                        {{ interface_range.name }}
+                                                    </option>
+                                                {% endif %}
                                             {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </td>
+
+
+                                {% for interface_terse in switch_conf.interfaces_terse %}
+                                    {% if interface_terse.name == interface.interface%}
+
+                                        {% if interface_terse.oper_status == 'up'%}
+                                            <td style="background-color: darkgreen; color: white;">Uppe</td>
+                                        {% else %}
+                                            <td style="background-color: red; color: white;">Nere</td>
                                         {% endif %}
-                                    {% endfor %}
-                                </select>
-                            </td>
-
-
-                            {% for interface_terse in switch_conf.interfaces_terse %}
-                                {% if interface_terse.name == interface.interface%}
-
-                                    {% if interface_terse.oper_status == 'up'%}
-                                        <td style="background-color: darkgreen; color: white;">Uppe</td>
-                                    {% else %}
-                                        <td style="background-color: red; color: white;">Nere</td>
+                                        {% for interface_unused in switch_conf.interfaces_unused %}
+                                            {% if interface.interface == interface_unused.Name %}
+                                                {% if interface_unused.DaysUnused == 'Never' and interface_terse.oper_status == 'down' %}
+                                                    <td style="background-color: darkgreen; color: white;">Oanvänd</td>
+                                                {% elif interface_unused.DaysUnused == 'Never' %}
+                                                    <td style="background-color: red; color: white;">Används</td>
+                                                {% else %}
+                                                    <td style="background-color: red; color: white;">{{ interface_unused.DaysUnused }} dagar</td>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
                                     {% endif %}
-                                    {% for interface_unused in switch_conf.interfaces_unused %}
-                                        {% if interface.interface == interface_unused.Name %}
-                                            {% if interface_unused.DaysUnused == 'Never' and interface_terse.oper_status == 'down' %}
-                                                <td style="background-color: darkgreen; color: white;">Oanvänd</td>
-                                            {% elif interface_unused.DaysUnused == 'Never' %}
-                                                <td style="background-color: red; color: white;">Används</td>
-                                            {% else %}
-                                                <td style="background-color: red; color: white;">{{ interface_unused.DaysUnused }} dagar</td>
-                                            {% endif %}
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endif %}
-                            {% endfor %}
-                            <!-- <td style="background-color: darkgreen;">
+                                {% endfor %}
+                                <td>
 
-                            </td>-->
-                            <td>
-
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                            {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>

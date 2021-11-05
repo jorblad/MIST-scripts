@@ -1,0 +1,106 @@
+{% extends "mist_import_sites/base.html" %}
+
+{% block content %}
+
+{{ formset.errors }}
+{{ formset.non_field_errors }}
+{{ form.errors }}
+{{ form.non_field_errors }}
+
+{{ interfaces }}
+
+{% for row in interfaces.rows %}
+<tr>
+    {% for value in row %}
+    <td>{{value}}</td>
+    {% endfor %}
+</tr>
+{% endfor %}
+
+<div class="container">
+    <form action="" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <fieldset class="form-group">
+            <legend>
+                <h1>Ersätt switch med kombinerad edge och access-switch</h1>
+            </legend>
+            {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                <label for="switchnamn" class="col-form-label">Switchnamn:</label>
+                <input type="text" class="form-control" name="switchnamn" id="switchnamn" size=20 required
+                    placeholder="swc-xx01-rxxx-xxxx"  autofocus value="{{ switch_conf.switch_name }}">
+                </div>
+                <div class="col-md-6">
+                <label for="gatuadress" class="col-form-label">Gatuadress:</label>
+                <input type="text" class="form-control" name="gatuadress" id="gatuadress" size=20 required
+                    placeholder="Gatuadress" value="{{ switch_conf.switch_gatuadress }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="popularnamn" class="col-form-label">Populärnamn:</label>
+                    <input type="text" class="form-control" name="popularnamn" id="popularnamn" size=20
+                        placeholder="Populärnamn" value="{{ switch_conf.switch_popularadress }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="plan" class="col-form-label">Våningsplan:</label>
+                    <input type="text" class="form-control" name="plan" id="plan" size=20
+                        placeholder="Plan 1" value="{{ switch_conf.switch_plan }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="rum_nummer" class="col-form-label">Rumsnummer:</label>
+                    <input type="text" class="form-control" name="rum_nummer" id="rum_nummer" size=20 placeholder="R123" value="{{ switch_conf.switch_rumsnummer }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="rum_beskrivning" class="col-form-label">Rumsbeskrivning:</label>
+                    <input type="text" class="form-control" name="rum_beskrivning" id="rum_beskrivning" size=20 placeholder="Elnisch" value="{{ switch_conf.switch_rumsbeskrivning }}">
+
+                </div>
+                <div class="col-md-6">
+                    <label for="ip_adress" class="col-form-label">IP-adress:</label>
+                    <input type="text" class="form-control" name="ip_adress" id="ip_adress" minlength="7" maxlength="15" size="15"
+                        pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$" required
+                        placeholder="10.101.xx.xx" value="{{ IPadress.0.IPAddress }}" autocomplete="off" list="datalistIP">
+                    <datalist id="datalistIP">
+                        {% for ip in IPadress %}
+                        <option value="{{ ip.IPAddress }}">{{ ip.IPAddress }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="col-md-6">
+                    <label for="s_vlan" class="col-form-label">Super-vlan:</label>
+                    <input type="number" class="form-control" name="s_vlan" id="s_vlan" size=4 min="0" max=4095>
+
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_ap" class="col-form-label">AP-interface:</label>
+                    <input type="number" class="form-control" name="interface_ap" id="interface_ap" size=2 min="0" value="{{switch_conf.ap_interfaces}}">
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_device" class="col-form-label">Device-interface:</label>
+                    <input type="number" class="form-control" name="interface_device" id="interface_device" size=2 min="0" value="{{switch_conf.device_interfaces}}">
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_pub" class="col-form-label">Publika interface:</label>
+                    <input type="number" class="form-control" name="interface_pub" id="interface_pub" size=2 min="0" value="{{switch_conf.pub_interfaces}}">
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_klientklass1" class="col-form-label">Klientklass1-interface:</label>
+                    <input type="number" class="form-control" name="interface_klientklass1" id="interface_klientklass1" size=2 min="0" value="{{switch_conf.klientklass1_interfaces}}">
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_klientklass2" class="col-form-label">Klientklass2-interface:</label>
+                    <input type="number" class="form-control" name="interface_klientklass2" id="interface_klientklass2" size=2 min="0" value="{{switch_conf.klientklass2_interfaces}}">
+                </div>
+                <div class="col-md-6">
+                    <label for="interface_cu_downlink" class="col-form-label">Koppar downlink-interface:</label>
+                    <input type="number" class="form-control" name="interface_cu_downlink" id="interface_cu_downlink" size=2 min="0" value="{{switch_conf.downlink_interfaces}}">
+                </div>
+                <button type="submit" class="btn btn-primary">Skapa erättningsswitch</button>
+            </div>
+
+
+        </fieldset>
+    </form>
+</div>
+{% endblock %}
+

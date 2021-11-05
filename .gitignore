@@ -147,3 +147,4 @@ labels/config-backup.yaml
 labels/mac-adresses.csv
 labels/mac-adresses1.csv
 labels/test.png
+django-script/netscripts/switches/templates/switches/swc-ex2300.conf

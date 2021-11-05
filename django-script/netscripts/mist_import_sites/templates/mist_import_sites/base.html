@@ -20,7 +20,7 @@
     <body>
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
-                <a class="navbar-brand" href="#">Navbar</a>
+                <a class="navbar-brand" href="#">Netscripts</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -38,7 +38,16 @@
                             </div> -->
                         <li class="nav-item"><a class="nav-link" href="/mist/new_site">Ny adress</a></li>
                         <li class="nav-item"><a class="nav-link" href="/mist/update">Uppdatera Mist firmware</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/switches/new_switch">Ny switch</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                Ny switch
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                                <li><a class="dropdown-item" href="/switches/new_switch">Ny access-switch</a></li>
+                                <li><a class="dropdown-item" href="/switches/new_swc_switch">Ny kombinerad edge och access-switch</a></li>
+                            </ul>
+                        </li>
                         <li class="nav-item"><a class="nav-link" href="/switches/search_switch">Sök switch</a></li>
                         <li class="nav-item"><a class="nav-link" href="/shodan">Shodan-report</a></li>
                     </ul>
