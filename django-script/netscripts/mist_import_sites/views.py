@@ -1,7 +1,7 @@
 from __future__ import division, print_function, absolute_import, unicode_literals
 from django.contrib.messages.api import info
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.views import generic
 from django.template import loader
@@ -831,7 +831,10 @@ def new_site(request):
             if new_adress(request, cd.get('gatuadress'), cd.get('shortname'), cd.get('popularnamn'), cd.get('verksamhet'), cd.get('postnummer'), cd.get('ekahau_file')):
                 messages.success(request, 'Ny adress {} ({}) tillagd'.format(
                     cd.get('gatuadress'), cd.get('shortname')))
-                return render(request, 'mist_import_sites/new_site.html', {'form': form})
+                if cd.get('creation_type') == "existing":
+                    return render(request, 'mist_import_sites/new_site.html', {'form': form})
+                else:
+                    return redirect('/switches/new_swc_switch?gatuadress={}&popularnamn={}'.format(cd.get('gatuadress'), cd.get('popularnamn')))
         else:
             messages.error(request, 'Kunde inte lägga till den nya adressen')
     return render(request, 'mist_import_sites/new_site.html', {'form': form})

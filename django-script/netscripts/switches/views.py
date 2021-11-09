@@ -693,22 +693,9 @@ def get_switch_conf(request, switch_ip, switch_name):
                     response = conn.send_config(
                         "delete interfaces interface-range pub member-range ge-0/0/{}".format(start_interface))
                     pub_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
-                    #switch_interface_range['member'] = list(switch_interface_range['member'])
-                    #messages.info(request, type(
-                        #switch_interface_range['member']).__name__)
-                    #for interface in range(int(start_interface), (int(end_interface)+1)):
 
-                        #switch_interface_range['member'].append({
-                        #    'name': 'ge-0/0/{}'.format(interface)
-                        #})
-                    #messages.info(
-                            #request, switch_interface_range['member'])
-
-
-                        #switch_interface_range['member']
                 except:
                     pub_interfaces = len(switch_interface_range['member'])
-                #pass
 
 
         if switch_interface_range['name'] == 'klientklass1':
@@ -1132,6 +1119,9 @@ def new_swc_switch(request):
     form = NewSwcSwitch()
     template = loader.get_template('switches/new_swc_switch.html')
     ny_ip_adress = get_next_edge_ip()
+    gatuadress = request.GET.get('gatuadress', '')
+    popularnamn = request.GET.get('popularnamn', '')
+
     #messages.info(request, ny_ip_adress)
 
     if request.method == 'POST':
@@ -1146,10 +1136,10 @@ def new_swc_switch(request):
             except:
                 messages.error(request, "Ngt gick fel")
 
-            return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress})
+            return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress, 'gatuadress': gatuadress, 'popularnamn': popularnamn})
 
         else:
             messages.error(
                 request, 'Kontrollera att du har fyllt i alla fält')
 
-    return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress})
+    return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress, 'gatuadress': gatuadress, 'popularnamn': popularnamn})

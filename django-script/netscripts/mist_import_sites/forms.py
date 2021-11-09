@@ -36,6 +36,10 @@ class SiteForm(forms.Form):
     verksamhet = forms.CharField(label='Verksamhet', max_length=4)
     postnummer = forms.CharField(label='postnummer', max_length=6)
     ekahau_file = forms.FileField(required=False)
+    creation_type = forms.ChoiceField(choices=(
+        ("new", "Ny site - skapa kombinerad edge och access-switch"),
+        ("existing", "Förbered befintlig site för Mist"),
+    ))
 
 class UpdateMistForm(forms.Form):
     sites_url = "{}/orgs/{}/sites".format(base_url, org_id)

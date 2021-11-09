@@ -51,6 +51,20 @@
                         <input type="file" class="form-control" name="ekahau_file" id="ekahau_file" accept=".esx">
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="creation_type" id="existing" checked value="existing">
+                        <label class="form-check-label" for="existing">
+                            Förbered befintlig site för Mist
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="creation_type" id="new" value="new">
+                        <label class="form-check-label" for="new">
+                            Ny site - skapa kombinerad edge och access-switch
+                        </label>
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-primary">Skapa</button>
             </fieldset>
         </form>
