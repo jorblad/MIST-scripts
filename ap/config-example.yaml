@@ -90,6 +90,7 @@ report:
   regex_sitename: .*\(....\)
   file_path: reports/
   filename: Inventory_
+  monthly_cost_per_ap:
 
 import:
   import_file: import-mall.xlsx

@@ -29,6 +29,11 @@ headers = {
     'Authorization': authorization
 }
 
+def get_current_mist_version():
+    with open('mist_import_sites/config.yaml') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+    return config['mist']['config']['auto_upgrade']['custom_versions']['AP32']
+
 class SiteForm(forms.Form):
     gatuadress = forms.CharField(label='Gatuadress', max_length=255)
     shortname = forms.CharField(label='Förkortning', max_length=4)
@@ -77,7 +82,7 @@ class UpdateMistForm(forms.Form):
 
 
     mist_version = forms.ChoiceField(choices=(
-        MistFirmwareVersions), initial=config['mist']['config']['auto_upgrade']['custom_versions']['AP32'])
+        MistFirmwareVersions), initial=get_current_mist_version())
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

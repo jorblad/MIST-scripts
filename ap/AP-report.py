@@ -168,15 +168,99 @@ df_sites['Totalt'] = df_sites.sum(axis=1)
 df_sites_t = df_sites.transpose()
 # append sums to the data frame
 
+forvaltningar = []
+
+
+for ap in dict_data:
+    forvaltning_json = {
+        'forkortning': ap['device_tag'],
+        'antal_aps': '',
+        'kostnad': ''
+    }
+    if forvaltning_json not in forvaltningar:
+        forvaltningar.append(forvaltning_json)
+
+
+
+
+for forvaltning in forvaltningar:
+
+    forvaltning_aps = []
+    for ap in dict_data:
+        if ap['device_tag'] == forvaltning['forkortning']:
+            forvaltning_aps.append(ap)
+    #print(dict_sites)
+    forvaltning_sites = []
+    for site in dict_sites:
+        try:
+            site_json = {
+                'Adress': site,
+                'Antal aps': dict_sites[site][forvaltning['forkortning']]
+            }
+            forvaltning_sites.append(site_json)
+        except:
+            pass
+
+    report_file_forvaltning = '{}/{}_{}{}.xlsx'.format(config['report']['file_path'], forvaltning['forkortning'], config['report']
+                                        ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+
+    df_aps_forvaltning = pandas.DataFrame(forvaltning_aps)
+
+    df_sites_forvaltning = pandas.DataFrame.from_records(forvaltning_sites)
+
+    df_sites_forvaltning_total = {
+        'Adress': 'Totalt',
+        'Antal aps': sum(df_sites_forvaltning['Antal aps']),
+        'Kostnad': "{} kr".format(sum(df_sites_forvaltning['Antal aps'])*config['report']['monthly_cost_per_ap'])
+    }
+
+    forvaltning_json = {
+        'forkortning': forvaltning['forkortning'],
+        'antal_aps': sum(df_sites_forvaltning['Antal aps']),
+        'kostnad': "{} kr".format(sum(df_sites_forvaltning['Antal aps'])*config['report']['monthly_cost_per_ap'])
+    }
+    forvaltning.update(forvaltning_json)
+
+    forvaltning_sites.append(df_sites_forvaltning_total)
+    df_sites_forvaltning = pandas.DataFrame.from_records(forvaltning_sites)
+
+    try:
+        with pandas.ExcelWriter(report_file_forvaltning) as writer:
+            df_sites_forvaltning.to_excel(writer, sheet_name='Sites', freeze_panes=(
+                1, 0), engine='xlsxwriter', index=False)
+            df_aps_forvaltning.to_excel(
+                writer, sheet_name='APs', index=False, freeze_panes=(1, 0), engine='xlsxwriter')
+            worksheet_sites = writer.sheets['Sites']
+            worksheet_aps = writer.sheets['APs']
+            worksheet_sites.set_column('A:A', 40)
+            worksheet_sites.set_column('B:V', 12)
+            worksheet_aps.set_column('A:A', 40)
+            worksheet_aps.set_column('B:B', 12)
+            worksheet_aps.set_column('C:C', 40)
+            worksheet_aps.set_column('D:D', 14)
+
+    except Exception as e:
+        print(e)
+
+print(forvaltningar)
+
+df_forvaltningar = pandas.DataFrame(forvaltningar)
+
 try:
     with pandas.ExcelWriter(report_file) as writer:
-        df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(1,0), engine='xlsxwriter', index_label='Adress')
+        df_sites_t.to_excel(writer, sheet_name='Sites', freeze_panes=(
+            1, 0), engine='xlsxwriter', index_label='Adress')
+        df_forvaltningar.to_excel(writer, sheet_name='Förvaltningar', freeze_panes=(
+            1, 0), engine='xlsxwriter', index=False, header=("Förvaltning", "Antal aps", "Kostnad"))
         df_aps.to_excel(
-            writer, sheet_name='APs', index=False, freeze_panes=(1,0), engine='xlsxwriter')
+            writer, sheet_name='APs', index=False, freeze_panes=(1, 0), engine='xlsxwriter')
         worksheet_sites = writer.sheets['Sites']
         worksheet_aps = writer.sheets['APs']
+        worksheet_forvaltningar = writer.sheets['Förvaltningar']
         worksheet_sites.set_column('A:A', 40)
         worksheet_sites.set_column('B:V', 5)
+        worksheet_forvaltningar.set_column('A:A', 10)
+        worksheet_forvaltningar.set_column('B:V', 10)
         worksheet_aps.set_column('A:A', 40)
         worksheet_aps.set_column('B:B', 12)
         worksheet_aps.set_column('C:C', 40)
@@ -189,14 +273,14 @@ except Exception as e:
 # write the plain text part
 text = """\
 Godmorgon
-Här kommer månadens rapport med MIST-accesspunkter
+Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\reports
 """
 # write the HTML part
 html = """\
 <html>
   <body>
     <p>Godmorgon!<br>
-    <p> Här kommer månadens rapport med MIST-accesspunkter</p>
+    <p> Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\reports</p>
   </body>
 </html>
 """
@@ -224,12 +308,12 @@ message.attach(part2)
 
 message.attach(part)
 text = message.as_string()
-
-# send your email
-with smtplib.SMTP(smtp_server, smtp_port) as server:
-    server.sendmail(
-        sender_email, receiver_email.split(','), message.as_string()
-    )
+if False:
+    # send your email
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.sendmail(
+            sender_email, receiver_email.split(','), message.as_string()
+        )
 
 
 

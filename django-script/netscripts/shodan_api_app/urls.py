@@ -7,6 +7,7 @@ from . import views
 app_name = 'shodan_api_app'
 
 urlpatterns = [
-    path('', views.IndexView.as_view(), name='index')
+    path('', views.IndexView.as_view(), name='index'),
+    path('update/', views.UpdateView, name='update')
 ]
 

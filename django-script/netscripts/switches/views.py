@@ -613,12 +613,7 @@ def get_switch_conf(request, switch_ip, switch_name):
 
         if switch_interface_range['name'] == 'downlink':
             downlink_interfaces = 0
-            try:
-                for donwlink_interface in switch_interface_range['member']:
-                    if re.match('ge-0/0/\d*', str(donwlink_interface['name'])):
-                        downlink_interfaces += 1
-            except:
-                pass
+
             try:
                 switch_interface_range['member-range']
                 start_interface = re.search(
@@ -632,7 +627,12 @@ def get_switch_conf(request, switch_ip, switch_name):
                 device_interfaces = len(
                     switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
             except:
-                downlink_interfaces = len(switch_interface_range['member'])
+                try:
+                    for donwlink_interface in switch_interface_range['member']:
+                        if re.match('ge-0/0/\d*', str(donwlink_interface['name'])):
+                            downlink_interfaces += 1
+                except:
+                    pass
 
 
         if switch_interface_range['name'] == 'ap':
@@ -1134,7 +1134,7 @@ def new_swc_switch(request):
                 messages.success(
                     request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
             except:
-                messages.error(request, "Ngt gick fel")
+                messages.error(request, "Något gick fel")
 
             return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress, 'gatuadress': gatuadress, 'popularnamn': popularnamn})
 

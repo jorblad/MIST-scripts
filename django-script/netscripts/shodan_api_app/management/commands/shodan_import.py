@@ -17,6 +17,13 @@ class Command(BaseCommand):
     args = ''
     help = 'import results from shodan'
 
+    def add_arguments(self, parser):
+        # Named (optional) arguments
+        parser.add_argument(
+            '--manual',
+            action='store_true',
+            help='Manually triggering shodan update',
+        )
 
 
 
@@ -99,8 +106,12 @@ class Command(BaseCommand):
         </body>
         </html>
         """.format(df_vulns.to_html(index=False))
-        if dict_vulns:
-            send_mail('Shodan sårbarheter', text, settings.from_mail,
-                      shodan_email_receivers, html_message=html)
+        if options['manual']:
+            pass
+        else:
+            if dict_vulns:
+                send_mail('Shodan sårbarheter', text, settings.from_mail,
+                        shodan_email_receivers, html_message=html)
+
 
         time.sleep(1)
