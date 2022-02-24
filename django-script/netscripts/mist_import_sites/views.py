@@ -216,18 +216,26 @@ def addVlansToSwitch(switch):
                 "set interfaces interface-range uplink unit 0 family ethernet-switching vlan members byod")
             response = conn.send_config(
                 "set interfaces interface-range uplink unit 0 family ethernet-switching vlan members guest")
+            response = conn.send_config(
+                "set interfaces interface-range uplink unit 0 family ethernet-switching vlan members chromebook")
         response = conn.send_config(
             "set interfaces interface-range downlink unit 0 family ethernet-switching vlan members byod")
         response = conn.send_config(
             "set interfaces interface-range downlink unit 0 family ethernet-switching vlan members guest")
         response = conn.send_config(
+            "set interfaces interface-range downlink unit 0 family ethernet-switching vlan members chromebook")
+        response = conn.send_config(
             "set interfaces interface-range ap unit 0 family ethernet-switching vlan members byod")
         response = conn.send_config(
             "set interfaces interface-range ap unit 0 family ethernet-switching vlan members guest")
         response = conn.send_config(
+            "set interfaces interface-range ap unit 0 family ethernet-switching vlan members chromebook")
+        response = conn.send_config(
             "set vlans byod vlan-id 39")
         response = conn.send_config(
             "set vlans guest vlan-id 38")
+        response = conn.send_config(
+            "set vlans chromebook vlan-id 40")
         response = conn.send_config(
             'commit confirmed 5 comment "MIST preparation"')
         response = conn.send_config(
@@ -240,25 +248,32 @@ def addVlansToSwitch(switch):
                 "set vlans byod interface uplink")
             response = conn.send_config(
                 "set vlans guest interface uplink")
+            response = conn.send_config(
+                "set vlans chromebook interface uplink")
         response = conn.send_config(
             "set vlans byod interface downlink")
         response = conn.send_config(
             "set vlans guest interface downlink")
         response = conn.send_config(
+            "set vlans chromebook interface downlink")
+        response = conn.send_config(
             "set vlans byod interface ap")
         response = conn.send_config(
             "set vlans guest interface ap")
+        response = conn.send_config(
+            "set vlans chromebook interface ap")
         response = conn.send_config(
             "set vlans byod vlan-id 39")
         response = conn.send_config(
             "set vlans guest vlan-id 38")
         response = conn.send_config(
+            "set vlans chromebook vlan-id 40")
+        response = conn.send_config(
             'commit confirmed 5 comment "MIST preparation"')
         response = conn.send_config(
             'commit')
 
-    #poe_interface_power = interface_poe['rpc-reply']['poe']['interface-information-detail']['interface-power-detail']
-    #response = conn.send_config("commit confirmed 2")
+
     logging.info(response.elapsed_time)
     logging.info(response.result)
     print(response.result)

@@ -935,7 +935,7 @@ def configure_switch(request):
     #messages.success(request, switch_conf)
 
     for interface_range in switch_conf['switch_interfaces']:
-        if interface_range['name'] != 'access-ports':
+        if interface_range['name'] != 'access-ports' and interface_range['name'] != 'dante':
             try:
                 if not isinstance(interface_range['member'], list):
                     interface_range['member'] = [interface_range['member']]
@@ -1063,7 +1063,7 @@ def configure_switch(request):
             #messages.success(request, switch_conf)
 
             for interface_range in switch_conf['switch_interfaces']:
-                if interface_range['name'] != 'access-ports':
+                if interface_range['name'] != 'access-ports' and interface_range['name'] != 'dante':
                     try:
                         if not isinstance(interface_range['member'], list):
                             interface_range['member'] = [interface_range['member']]

@@ -67,11 +67,13 @@ message["To"] = receiver_email
 dict_data = []
 dict_sites = {}
 
+
+
 for site in sites:
     if search(regex_sitename, site['name']):
-        #print(site)
+
         for sitegroup in site['sitegroup_ids']:
-            #print(sitegroup)
+
             sitegroup_url = "{}/orgs/{}/sitegroups/{}".format(base_url, org_id, sitegroup)
             resultsitegroup = requests.get(sitegroup_url, headers=headers)
             sitegroups = json.loads(resultsitegroup.text)
@@ -103,8 +105,9 @@ for site in sites:
 
         device_lookup = {}
         device_lookup_mac = {}
-
+        #print(devices)
         for device in devices:
+            #print(device)
 
             device_id = device['id']
             device_name = device['name']
@@ -119,6 +122,7 @@ for site in sites:
                 logging.info('Tag-ID:')
                 logging.info(tag['id'])
                 for ap in tag['values']:
+
                     #Logs AP ID
                     logging.info('AP-ID:')
                     logging.info(ap)
@@ -135,24 +139,38 @@ for site in sites:
                     }
                     dict_data.append(dict)
                     device_lookup.pop(ap, None)
+            print(site_name)
+            print(device_lookup)
             for ap in device_lookup:
-                    #Logs AP ID
-                    logging.info('AP-ID:')
-                    logging.info(ap)
-                    if sitegroup_name in dict_sites[site['name']]:
-                        dict_sites[site['name']][sitegroup_name] += 1
-                    else:
-                        dict_sites[site['name']][sitegroup_name] = 1
-                    dict = {
-                        "device_name": device_lookup[ap],
-                        "device_tag": sitegroup_name,
-                        "device_adress": site['name'],
-                        "device_mac": device_lookup_mac[ap],
-                    }
+                #Logs AP ID
+                logging.info('AP-ID:')
+                logging.info(ap)
+                if sitegroup_name in dict_sites[site['name']]:
+                    dict_sites[site['name']][sitegroup_name] += 1
+                else:
+                    dict_sites[site['name']][sitegroup_name] = 1
+                dict = {
+                    "device_name": device_lookup[ap],
+                    "device_tag": sitegroup_name,
+                    "device_adress": site['name'],
+                    "device_mac": device_lookup_mac[ap],
+                }
+                dict_data.append(dict)
+                for tag in tags:
+                    if tag['name'] == sitegroup_name:
+
+                        tag['values'].append(ap)
+
+                        add_ap_url = "{}/sites/{}/wxtags/{}".format(
+                            base_url, site['id'], tag['id'])
+                        result_add_ap = requests.put(
+                            add_ap_url, data=json.dumps(tag), headers=headers)
+                        logging.debug(json.dumps(result_add_ap.text))
+
+
 
             if numberaps != 0:
                 forvaltning_ap = tag['name'] + " " + str(numberaps) + "\n"
-                #dict_sites[site['name']][tag['name']] = int(numberaps)
 
         except:
             pass
@@ -181,7 +199,12 @@ for ap in dict_data:
         forvaltningar.append(forvaltning_json)
 
 
-
+report_date_path = os.path.join(
+    config['report']['file_path'], datetime.today().strftime('%Y-%m-%d'))
+try:
+    os.mkdir(report_date_path)
+except Exception as e:
+    print(e)
 
 for forvaltning in forvaltningar:
 
@@ -189,7 +212,7 @@ for forvaltning in forvaltningar:
     for ap in dict_data:
         if ap['device_tag'] == forvaltning['forkortning']:
             forvaltning_aps.append(ap)
-    #print(dict_sites)
+
     forvaltning_sites = []
     for site in dict_sites:
         try:
@@ -201,7 +224,7 @@ for forvaltning in forvaltningar:
         except:
             pass
 
-    report_file_forvaltning = '{}/{}_{}{}.xlsx'.format(config['report']['file_path'], forvaltning['forkortning'], config['report']
+    report_file_forvaltning = '{}/{}_{}{}.xlsx'.format(report_date_path, forvaltning['forkortning'], config['report']
                                         ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
 
     df_aps_forvaltning = pandas.DataFrame(forvaltning_aps)
@@ -242,7 +265,7 @@ for forvaltning in forvaltningar:
     except Exception as e:
         print(e)
 
-print(forvaltningar)
+#print(forvaltningar)
 
 df_forvaltningar = pandas.DataFrame(forvaltningar)
 
@@ -273,17 +296,17 @@ except Exception as e:
 # write the plain text part
 text = """\
 Godmorgon
-Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\reports
-"""
+Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\\reports\{}
+""".format(datetime.today().strftime('%Y-%m-%d'))
 # write the HTML part
 html = """\
 <html>
   <body>
     <p>Godmorgon!<br>
-    <p> Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\reports</p>
+    <p> Här kommer månadens rapport med MIST-accesspunkter, resten av rapporterna finns på G:\IT-avdelningen special\mist\\reports\{}</p>
   </body>
 </html>
-"""
+""".format(datetime.today().strftime('%Y-%m-%d'))
 # convert both parts to MIMEText objects and add them to the MIMEMultipart message
 part1 = MIMEText(text, "plain")
 part2 = MIMEText(html, "html")
@@ -308,7 +331,7 @@ message.attach(part2)
 
 message.attach(part)
 text = message.as_string()
-if False:
+if True:
     # send your email
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.sendmail(
