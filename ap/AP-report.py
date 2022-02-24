@@ -167,11 +167,6 @@ for site in sites:
                             add_ap_url, data=json.dumps(tag), headers=headers)
                         logging.debug(json.dumps(result_add_ap.text))
 
-
-
-            if numberaps != 0:
-                forvaltning_ap = tag['name'] + " " + str(numberaps) + "\n"
-
         except:
             pass
 
