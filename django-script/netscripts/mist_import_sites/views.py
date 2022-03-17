@@ -793,7 +793,8 @@ def update_mist(request, mist_version):
                 update_settings_url = "{}/sites/{}/setting".format(base_url, site['id'])
                 result_update = requests.put(update_settings_url, data=json_update, headers=headers)
                 logging.debug(json.dumps(result_update.text))
-        messages.success(request, 'Mist version updateras till {}'.format(mist_version))
+        messages.success(request, 'Mist version updateras till {} nästkommande natt'.format(
+            mist_version))
     except:
         messages.error(request, 'Misslyckades med att uppdatera Mist version')
 

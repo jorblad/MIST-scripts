@@ -39,11 +39,15 @@ headers = {
 #Regex for filtering out so that we only show sites that have a shortname
 # which is how we decide if a site is just for lab or a actual site
 regex_sitename = config['report']['regex_sitename']
+
+regex_adress = "(.*)\((....)\)"
 #Regex for empty json to hide sites without any accesspoints.
 regex_empty = "^\[\]$"
 
 report_file = '{}/{}{}.xlsx'.format(config['report']['file_path'], config['report']
                                     ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+report_file_csv = '{}/{}{}.csv'.format(config['report']['file_path'], config['report']
+                                    ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M')))
 report_file_name = os.path.basename(report_file)
 
 sites_url = "{}/orgs/{}/sites".format(base_url, org_id)
@@ -134,13 +138,12 @@ for site in sites:
                     dict = {
                         "device_name": device_lookup[ap],
                         "device_tag": tag['name'],
-                        "device_adress": site['name'],
+                        "device_adress": search(regex_adress, site['name']).group(1),
                         "device_mac": device_lookup_mac[ap],
                     }
                     dict_data.append(dict)
                     device_lookup.pop(ap, None)
-            print(site_name)
-            print(device_lookup)
+
             for ap in device_lookup:
                 #Logs AP ID
                 logging.info('AP-ID:')
@@ -152,7 +155,7 @@ for site in sites:
                 dict = {
                     "device_name": device_lookup[ap],
                     "device_tag": sitegroup_name,
-                    "device_adress": site['name'],
+                    "device_adress": search(regex_adress, site['name']).group(1),
                     "device_mac": device_lookup_mac[ap],
                 }
                 dict_data.append(dict)
@@ -170,9 +173,16 @@ for site in sites:
         except:
             pass
 
-
-
 column_headers = ["device_name", "device_tag", "device_adress", "device_mac"]
+
+
+#Export data as csv for combination with Cisco for invoicing purposes
+with open(report_file_csv, 'w', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=column_headers)
+    writer.writeheader()
+    writer.writerows(dict_data)
+
+
 
 df_aps = pandas.DataFrame(dict_data)
 
@@ -180,6 +190,8 @@ df_sites = pandas.DataFrame(dict_sites)
 df_sites['Totalt'] = df_sites.sum(axis=1)
 df_sites_t = df_sites.transpose()
 # append sums to the data frame
+
+#print(dict_data)
 
 forvaltningar = []
 
@@ -219,8 +231,7 @@ for forvaltning in forvaltningar:
         except:
             pass
 
-    report_file_forvaltning = '{}/{}_{}{}.xlsx'.format(report_date_path, forvaltning['forkortning'], config['report']
-                                        ['filename'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    report_file_forvaltning = '{}/{}_{}_AP.xlsx'.format(report_date_path, forvaltning['forkortning'], str(datetime.now().strftime('%Y_%m')))
 
     df_aps_forvaltning = pandas.DataFrame(forvaltning_aps)
 
