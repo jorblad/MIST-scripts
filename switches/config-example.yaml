@@ -1,7 +1,0 @@
-switch:
-  username:
-  password:
-solarwinds:
-  username:
-  password:
-  certificate_file: solarwinds.pem
