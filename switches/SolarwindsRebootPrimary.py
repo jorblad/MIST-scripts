@@ -10,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 
 from scrapli import Scrapli
 
-with open('/opt/scripts/switches/config.yaml') as f:
+with open('/opt/scripts/ap/config.yaml') as f:thun
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 import logging
