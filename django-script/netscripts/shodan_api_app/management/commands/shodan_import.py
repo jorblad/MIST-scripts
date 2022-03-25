@@ -1,22 +1,29 @@
+#Django imports
 from django.core.management.base import BaseCommand, CommandError
-
-import sys
-import shodan
-import time
-import ipaddress
-import pandas
-from shodan_api_app.models import ShodanResult, ShodanSettings, ShodanIPSubnet, ShodanEmailReceiver
-
 from django.core.mail import send_mail
 
+#Other imports
+import sys
+import shodan # Shodan api import
+import time
+import ipaddress  # Functions to work with IP-adresses in a easy way
+import pandas #Work with tables
+#Include models for settings and data
+from shodan_api_app.models import ShodanResult, ShodanSettings, ShodanIPSubnet, ShodanEmailReceiver
+
+
+### This script is triggered either via cron or by pressing update on the page ###
+
+#Logging
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     filename='../logs/ShodanImport.log', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
+#Tha class for importing shodan data
 class Command(BaseCommand):
     args = ''
     help = 'import results from shodan'
-
+    #What arguments are possible
     def add_arguments(self, parser):
         # Named (optional) arguments
         parser.add_argument(
@@ -27,7 +34,7 @@ class Command(BaseCommand):
 
 
 
-
+    #The updating function
     def handle(self, *args, **options):
         settings = ShodanSettings.load()
         shodan_subnet = ShodanIPSubnet.objects.all().values_list('ip_subnet', flat=True)
@@ -35,21 +42,21 @@ class Command(BaseCommand):
         SHODAN_API_KEY = settings.shodan_api
         shodan_email_receivers = list(
             ShodanEmailReceiver.objects.all().values_list('email_adress', flat=True))
-
+        #Clear the table holding previous results
         ShodanResult.objects.all().delete()
         dict_vulns = []
-
+        #Loop through subnets defined in settings
         for subnet in subnets:
 
             query = "net:" + str(subnet)
 
             counter = 0
             limit = 1500
-
+            #Connect to Shodan API
             try:
                 api = shodan.Shodan(SHODAN_API_KEY)
                 results = api.search(query)
-
+                #Adding the new data to the table
                 for host in api.search_cursor(query):
                     try:
                         host_to_db = ShodanResult()
@@ -62,6 +69,7 @@ class Command(BaseCommand):
                         host_to_db.vulnerabilities = list(host.get('vulns', 'n'))
                         host_to_db.save()
 
+                        #If there are any vulnerabilities save those to a separate dict for emailing purposes
                         if list(host.get('vulns', '')):
                             dict_vuln = {
                                 "ip_adress": host['ip_str'],
@@ -87,7 +95,7 @@ class Command(BaseCommand):
 
             except:
                 raise
-
+        #Make a datframe of vulnerabilities for the email
         df_vulns = pandas.DataFrame(data=dict_vulns)
         text = """\
         Hej
@@ -106,6 +114,7 @@ class Command(BaseCommand):
         </body>
         </html>
         """.format(df_vulns.to_html(index=False))
+        #Check argument to not send email if updated manually
         if options['manual']:
             pass
         else:

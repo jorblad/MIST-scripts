@@ -1,3 +1,4 @@
+#Django libraries
 from django.contrib.messages.api import info
 from django.core.exceptions import AppRegistryNotReady
 from django.shortcuts import render
@@ -5,15 +6,15 @@ from django.template import loader
 from django.contrib import messages
 from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
-
 from django.template.loader import render_to_string
+#Other imports
 import re #Import regex
-import orionsdk
-import requests
+import orionsdk #Solarwinds API
+import requests #For use with rest-api
 import yaml
 import os
-import pdfkit
-import ipaddress
+import pdfkit #for creation of PDF:s
+import ipaddress #Functions to work with IP-adresses in a easy way
 import json
 import xmltodict
 
