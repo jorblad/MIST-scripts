@@ -1,3 +1,4 @@
+#Django libraries
 from __future__ import nested_scopes
 from sys import version
 from django import forms
@@ -8,10 +9,11 @@ import requests
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Fieldset, ButtonHolder, Submit
 
+#Log to file
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     filename='../logs/Mist-api.log', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
-
+#Get configuration from config.yaml
 with open('mist_import_sites/config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -29,11 +31,13 @@ headers = {
     'Authorization': authorization
 }
 
+#Function o get curent mist firmware from config.yaml, checks what it says for AP32 but since we run the same firmware on all models it dosen´t matter
 def get_current_mist_version():
     with open('mist_import_sites/config.yaml') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     return config['mist']['config']['auto_upgrade']['custom_versions']['AP32']
 
+#Form for creating of new site, needed in django for managing forms
 class SiteForm(forms.Form):
     gatuadress = forms.CharField(label='Gatuadress', max_length=255)
     shortname = forms.CharField(label='Förkortning', max_length=4)
@@ -46,12 +50,15 @@ class SiteForm(forms.Form):
         ("existing", "Förbered befintlig site för Mist"),
     ))
 
+#Form for update mist
 class UpdateMistForm(forms.Form):
     sites_url = "{}/orgs/{}/sites".format(base_url, org_id)
 
     resultssites = requests.get(sites_url, headers=headers)
     sites = json.loads(resultssites.text)
+    #Get firmwares from the first site
     site_id = sites[0]['id']
+    #Create list for recommended and other firmwares
     MistFirmwareVersions = [
         'Rekomenderad', [],
         'Resterande', [],
@@ -62,6 +69,7 @@ class UpdateMistForm(forms.Form):
 
     result_firmwares = requests.get(firmware_url, headers=headers)
     firmwares = json.loads(result_firmwares.text)
+    #Get firmware for AP32 since that is our most common access-point
     for firmware in firmwares:
         if firmware['model']=='AP32':
             if firmware['tag']:
@@ -73,14 +81,14 @@ class UpdateMistForm(forms.Form):
                 firmware_tuple = (firmware['version'], "{}".format(
                     firmware['version']))
                 MistFirmwareVersions[3].append(firmware_tuple)
-
+    #Create Option List
     MistFirmwareVersions = "[('Rekomenderade', {}), ('Resterande', {})]".format(MistFirmwareVersions[1], MistFirmwareVersions[3])
 
     MistFirmwareVersions = eval(MistFirmwareVersions)
 
 
 
-
+    #Create optionfield for firmware versions
     mist_version = forms.ChoiceField(choices=(
         MistFirmwareVersions), initial=get_current_mist_version())
 
