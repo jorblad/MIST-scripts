@@ -53,10 +53,6 @@ with open('mist_import_sites/config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
 #Add variables for easy access to configuration
-import_file = config['import']['import_file']
-
-import_file_sheet = config['import']['import_sheet']
-
 import_path_ekahau = config['import']['import_ekahau_path']
 
 regex_sitename = config['report']['regex_sitename']

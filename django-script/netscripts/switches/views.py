@@ -17,17 +17,18 @@ import pdfkit #for creation of PDF:s
 import ipaddress #Functions to work with IP-adresses in a easy way
 import json
 import xmltodict
-
+#For working with switches
 from scrapli import Scrapli
 
-
+#import forms from the project
 from .forms import NewSwitch, SearchSwitch, ReplaceSwitch, ConfigureSwitch, NewSwcSwitch, ReplaceSwcSwitch
 
+#Logging
 import logging
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     filename='../logs/switches.log', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
 
-
+#Get configuration from mist_import_sites config.yaml
 with open('mist_import_sites/config.yaml') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -40,51 +41,60 @@ solarwinds_username = config['solarwinds']['username']
 solarwinds_password = config['solarwinds']['password']
 solarwinds_certificate = config['solarwinds']['certificate_file']
 
-#Unicode to make config snmp
+#Unicode to make config snmp usable
 unicode_table = {
     ord('å'): 'a',
     ord('ä'): 'a',
     ord('ö'): 'o',
 }
 
+#Function to get available access-switch IP-adresses
 def get_next_access_ip():
+    #Connect to Solarwinds
     session = requests.Session()
     session.timeout = 30  # Set your timeout in seconds
     logging.info("Connecting to Solarwinds")
     swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
                                solarwinds_password, verify=False, session=session)
     logging.info("Getting free IP-adresses")
+    #Queery to get free IP-adresses
     nodes = swis.query(
         "SELECT TOP 65025 IPAddress FROM IPAM.IPNode WHERE Status=2 AND SubnetId LIKE '149'")
     return nodes['results']
 
+#Function to get available edge-switch IP-adresses
 def get_next_edge_ip():
+    #Connect to Solarwinds
     session = requests.Session()
     session.timeout = 30  # Set your timeout in seconds
     logging.info("Connecting to Solarwinds")
     swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
                                solarwinds_password, verify=False, session=session)
     logging.info("Getting free IP-adresses")
+    #Queery to get free IP-adresses
     nodes = swis.query(
         "SELECT TOP 1022 IPAddress FROM IPAM.IPNode WHERE Status=2 AND SubnetId LIKE '2701'")
     return nodes['results']
 
-
+#Check if input is a valid IP-adress
 def valid_ip(address):
     try:
+        #Try to print cause if it isn´t a valid IP it throws an exception
         print(ipaddress.ip_address(address))
         return True
     except:
         return False
 
+#Function for creating a new access-switch configuration
 def create_switch_conf(request, cd, source):
+    #Count total amount of copper interfaces needed
     antal_interfaces = int(cd['interface_ap']) + \
         int(cd['interface_device']) + \
         int(cd['interface_pub']) + \
         int(cd['interface_klientklass1']) + \
             int(cd['interface_klientklass2']) + \
                 int(cd['interface_cu_downlink'])
-
+    #If smaller than a certain size add all available interfaces as klientklass2 interfaces
     if antal_interfaces <= 12:
         switchmodell = 'ex2300-c-12p'
         if cd['interface_uplink'] == 'sfp':
@@ -124,9 +134,11 @@ def create_switch_conf(request, cd, source):
                                                                                 ) - int(cd['interface_klientklass1']) - int(cd['interface_cu_downlink'])
 
     else:
+        #If more than 48 ports are needed say that it isnt´t possible
         messages.error(request, 'Vi har inte så stora switchar')
         return render(request, 'switches/new_switch.html', {'form': form})
 
+    #Check the switchmodel and set what interfaces are uplink and downlink based on that
     if switchmodell == 'ex2300-c-12p':
         if cd['interface_uplink'] == 'sfp':
 
@@ -187,9 +199,9 @@ def create_switch_conf(request, cd, source):
                     "uplink": ['ge-0/0/47'],
                     "access_ports": [],
                 }
-
+    #Reset last interface number
     last_interface_number = 0
-
+    #Go through all interfaces and add them to the correct interface ranges
     for i in range(0, int(cd['interface_ap'])):
         interface_number = i + last_interface_number
         interface_name = "ge-0/0/{}".format(interface_number)
@@ -259,18 +271,21 @@ def create_switch_conf(request, cd, source):
         interface_name = "ge-0/0/{}".format(interface_number)
         interfaces['downlink'].append(interface_name)
 
+    #Convert to snmp usable names
     cd['gatuadress_uni'] = cd['gatuadress'].translate(unicode_table)
     cd['popularnamn_uni'] = cd['popularnamn'].translate(unicode_table)
     cd['plan_uni'] = cd['plan'].translate(unicode_table)
     cd['rum_nummer_uni'] = cd['rum_nummer'].translate(unicode_table)
     cd['rum_beskrivning_uni'] = cd['rum_beskrivning'].translate(
         unicode_table)
+    #Put together context for creating configuration based on a template
     context = {
             "conf": cd,
             "interfaces": interfaces,
             "switch_model": switchmodell
         }
 
+    #Decide which report should be used on wheter it is a new switch or a replacement of a existing switch
     if source == "new_switch":
         template_table = loader.get_template(
             'switches/switch_interfaces.html')
@@ -283,53 +298,64 @@ def create_switch_conf(request, cd, source):
         template_table = loader.get_template(
             'switches/switch_interfaces.html')
 
+    #Configuation template
     template_ex2300 = loader.get_template('switches/swa-ex2300.conf')
 
+    #Template for switch-label
     template_label = loader.get_template('switches/switch_label.html')
 
     fs = FileSystemStorage()
+    #Find where the config and report file should go
     conf_file_url = "{}/{}/{}.conf".format(import_path_ekahau,
                                             cd.get('gatuadress'), cd['switchnamn'])
     interfaces_file_url = "{}/{}/{}".format(import_path_ekahau,
                                             cd.get('gatuadress'), cd['switchnamn'])
+
+    #If folder for adress dosen´t exist create it
     try:
         os.mkdir(os.path.join(
             import_path_ekahau, cd.get('gatuadress')))
     except:
         pass
 
+    #Create configuration file from template
     f = open(conf_file_url, "w")
     f.write(template_ex2300.render(context))
     f.close()
 
+    #Create interface report from template
     f_interfaces = open("{}.html".format(interfaces_file_url), "w")
     f_interfaces.write(template_table.render(context))
     f_interfaces.close()
 
+    #Create PDF-file from html report
     pdfkit.from_file("{}.html".format(interfaces_file_url),
                         "{}.pdf".format(interfaces_file_url))
 
+    #Create switchlabel from template
     f_switch_label = open(
         "{}-label.html".format(interfaces_file_url), "w")
     f_switch_label.write(template_label.render(cd))
     f_switch_label.close()
 
+    #Options for creation of PDF-label
     label_options = {
         'page-height': '12mm',
         'page-width': '62mm',
         'margin-top': '0',
         'margin-bottom': '0',
     }
-
+    #Create PDF switchlabel from html-file
     pdfkit.from_file("{}-label.html".format(interfaces_file_url),
                         "{}-label.pdf".format(interfaces_file_url), options=label_options)
 
+    ## I have inactivated deletion of html files since those actualy behave better than the pdf conversion often
     #os.remove("{}.html".format(interfaces_file_url))
     #os.remove("{}-label.html".format(interfaces_file_url))
-
+    #return switchmodell for message and to end function
     return switchmodell
 
-
+#Function for creating a new combined switch configuration
 def create_swc_switch_conf(request, cd, source):
     antal_interfaces = int(cd['interface_ap']) + \
         int(cd['interface_device']) + \
@@ -337,7 +363,7 @@ def create_swc_switch_conf(request, cd, source):
         int(cd['interface_klientklass1']) + \
         int(cd['interface_klientklass2']) + \
         int(cd['interface_cu_downlink'])
-
+    #If smaller than a certain size add all available interfaces as klientklass2 interfaces
     if antal_interfaces <= 10:
         switchmodell = 'ex2300-c-12p'
         if antal_interfaces != 10:
@@ -360,9 +386,11 @@ def create_swc_switch_conf(request, cd, source):
                                                                             ) - int(cd['interface_klientklass1']) - int(cd['interface_cu_downlink'])
 
     else:
+        #If more than 48 ports are needed say that it isnt´t possible
         messages.error(request, 'Vi har inte så stora switchar')
         return render(request, 'switches/new_switch.html', {'form': form})
 
+    #Check the switchmodel and set what interfaces are uplink and downlink based on that
     if switchmodell == 'ex2300-c-12p':
         interfaces = {
             "AP": [],
@@ -403,8 +431,10 @@ def create_swc_switch_conf(request, cd, source):
             "access_ports": [],
         }
 
+    #Reset last interface_number
     last_interface_number = 0
 
+    #Go through all interfaces and add them to the correct interface ranges
     for i in range(0, int(cd['interface_ap'])):
         interface_number = i + last_interface_number
         interface_name = "ge-0/0/{}".format(interface_number)
@@ -474,6 +504,7 @@ def create_swc_switch_conf(request, cd, source):
         interface_name = "ge-0/0/{}".format(interface_number)
         interfaces['downlink'].append(interface_name)
 
+    #Convert input to snmp friendly version
     cd['gatuadress_uni'] = cd['gatuadress'].translate(unicode_table)
     cd['popularnamn_uni'] = cd['popularnamn'].translate(unicode_table)
     cd['plan_uni'] = cd['plan'].translate(unicode_table)
@@ -487,6 +518,7 @@ def create_swc_switch_conf(request, cd, source):
         "switch_model": switchmodell
     }
 
+    #Set different report based on whether it is a new switch or a replacement
     if source == "new_switch":
         template_table = loader.get_template(
             'switches/switch_interfaces.html')
@@ -499,54 +531,66 @@ def create_swc_switch_conf(request, cd, source):
         template_table = loader.get_template(
             'switches/switch_interfaces.html')
 
+    #Set template for switch-configuration
     template_ex2300 = loader.get_template('switches/swc-ex2300.conf')
 
+    #Set template for switch-label
     template_label = loader.get_template('switches/switch_label.html')
 
+    #Set file paths
     fs = FileSystemStorage()
     conf_file_url = "{}/{}/{}.conf".format(import_path_ekahau,
                                            cd.get('gatuadress'), cd['switchnamn'])
     interfaces_file_url = "{}/{}/{}".format(import_path_ekahau,
                                             cd.get('gatuadress'), cd['switchnamn'])
+
+    #Create folder if it dosen´t exist
     try:
         os.mkdir(os.path.join(
             import_path_ekahau, cd.get('gatuadress')))
     except:
         pass
 
+    #Create configuration file from template
     f = open(conf_file_url, "w")
     f.write(template_ex2300.render(context))
     f.close()
 
+    #Create interface report from template
     f_interfaces = open("{}.html".format(interfaces_file_url), "w")
     f_interfaces.write(template_table.render(context))
     f_interfaces.close()
 
+    #Create PDF-file from html report
     pdfkit.from_file("{}.html".format(interfaces_file_url),
                      "{}.pdf".format(interfaces_file_url))
 
+    #Create switchlabel from template
     f_switch_label = open(
         "{}-label.html".format(interfaces_file_url), "w")
     f_switch_label.write(template_label.render(cd))
     f_switch_label.close()
 
+    #Options for creation of PDF-label
     label_options = {
         'page-height': '12mm',
         'page-width': '62mm',
         'margin-top': '0',
         'margin-bottom': '0',
     }
-
+    #Create PDF switchlabel from html-file
     pdfkit.from_file("{}-label.html".format(interfaces_file_url),
                      "{}-label.pdf".format(interfaces_file_url), options=label_options)
 
+    ## I have inactivated deletion of html files since those actualy behave better than the pdf conversion often
     #os.remove("{}.html".format(interfaces_file_url))
     #os.remove("{}-label.html".format(interfaces_file_url))
 
     return switchmodell
 
-
+#Function for getting switch configuration from existing switch
 def get_switch_conf(request, switch_ip, switch_name):
+    #Set switch information for scrapli
     device = {
         "host": switch_ip,
         "auth_username": switch_username,
@@ -556,8 +600,10 @@ def get_switch_conf(request, switch_ip, switch_name):
     }
     logging.info("Logging in to switch {} with IP {}".format(
         switch_name, switch_ip))
+    #Connecting to the switch
     conn = Scrapli(**device)
     conn.open()
+    #Get switchmodel from the switch with ssh
     response = conn.send_command("show chassis hardware | display xml")
     response_dict = xmltodict.parse(response.result)
     response_json = json.dumps(response_dict)
@@ -576,7 +622,7 @@ def get_switch_conf(request, switch_ip, switch_name):
 
     if switch_location == '':
         switch_location = ', , , ";'
-
+    #Using regex to get just the location from the response
     regex_location = '(.*)";'
     try:
         switch_location = re.search(
@@ -585,47 +631,62 @@ def get_switch_conf(request, switch_ip, switch_name):
     except:
         switch_location = ''
 
+    #Split location field into our different fields
     switch_location_list = switch_location.split(', ')
+    #Create a dict from the different parts of the location
     dict_switch_location = dict(enumerate(switch_location_list))
 
     #######################################################################
     ##########                 Get interfaces                    ##########
     #######################################################################
+    #Reset interfaces
     switch_interfaces = {}
     try:
+        #Ask the switch for interfaces in configuration
         response = conn.send_command(
             "show configuration interfaces | display xml")
         switch_interfaces_dict = json.dumps(xmltodict.parse(response.result))
         switch_interfaces = json.loads(switch_interfaces_dict)
+        #Get interface-ranges
         switch_interfaces = switch_interfaces['rpc-reply']['configuration']['interfaces']['interface-range']
 
     except:
         switch_interfaces = ''
 
+    #Set uplink to fiber if nothing else i configured
     uplink_interfaces = 'sfp'
+    #Check Uplink interfaces
     for switch_interface_range in switch_interfaces:
         if switch_interface_range['name'] == 'uplink':
             try:
+                #Check if there are any copper interface in uplink
                 if re.match('ge-0/0/\d*', str(switch_interface_range['member']['name'])):
                     uplink_interfaces = 'ge'
             except:
+                #If the switch has multiple interfaces in the interface-range it throws an exception
                 if "swa" in switch_name:
                     messages.warning(request, "Flera uplink-portar, en access-switch ska bara ha en")
 
         if switch_interface_range['name'] == 'downlink':
+            #Reset number of downlink copper interfaces
             downlink_interfaces = 0
 
             try:
                 switch_interface_range['member-range']
+                #For member-range find start and end interface
                 start_interface = re.search(
                     "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                 end_interface = re.search(
                     "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                #Create separate member statement for every part of the member-range
                 response = conn.send_config(
                     "wildcard range set interfaces interface-range downlink member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                #Delete the member-range
                 response = conn.send_config(
                     "delete interfaces interface-range downlink member-range ge-0/0/{}".format(start_interface))
-                device_interfaces = len(
+                downlink_interfaces = len(
                     switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
             except:
                 try:
@@ -642,13 +703,18 @@ def get_switch_conf(request, switch_ip, switch_name):
                 ap_interfaces = 0
             except:
                 try:
+                    #For member-range find start and end interface
                     switch_interface_range['member-range']
                     start_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                     end_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                    #Create separate member statement for every part of the member-range
                     response = conn.send_config(
                         "wildcard range set interfaces interface-range ap member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                    #Delete the member-range
                     response = conn.send_config(
                         "delete interfaces interface-range ap member-range ge-0/0/{}".format(start_interface))
                     ap_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
@@ -662,13 +728,18 @@ def get_switch_conf(request, switch_ip, switch_name):
                 device_interfaces = 0
             except:
                 try:
+                    #For member-range find start and end interface
                     switch_interface_range['member-range']
                     start_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                     end_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                    #Create separate member statement for every part of the member-range
                     response = conn.send_config(
                         "wildcard range set interfaces interface-range device member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                    #Delete the member-range
                     response = conn.send_config(
                         "delete interfaces interface-range device member-range ge-0/0/{}".format(start_interface))
                     device_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
@@ -677,20 +748,24 @@ def get_switch_conf(request, switch_ip, switch_name):
 
 
         if switch_interface_range['name'] == 'pub':
-            #messages.info(request, switch_interface_range['member-range'])
-            #messages.info(request, switch_interfaces)
+
             try:
                 switch_interface_range['@inactive']
                 pub_interfaces = 0
             except:
                 try:
+                    #For member-range find start and end interface
                     switch_interface_range['member-range']
                     start_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                     end_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                    #Create separate member statement for every part of the member-range
                     response = conn.send_config(
                         "wildcard range set interfaces interface-range pub member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                    #Delete the member-range
                     response = conn.send_config(
                         "delete interfaces interface-range pub member-range ge-0/0/{}".format(start_interface))
                     pub_interfaces = len(switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
@@ -705,13 +780,18 @@ def get_switch_conf(request, switch_ip, switch_name):
                 klientklass1_interfaces = 0
             except:
                 try:
+                    #For member-range find start and end interface
                     switch_interface_range['member-range']
                     start_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                     end_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                    #Create separate member statement for every part of the member-range
                     response = conn.send_config(
                         "wildcard range set interfaces interface-range klientklass1 member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                    #Delete the member-range
                     response = conn.send_config(
                         "delete interfaces interface-range klientklass1 member-range ge-0/0/{}".format(start_interface))
                     device_interfaces = len(
@@ -726,20 +806,25 @@ def get_switch_conf(request, switch_ip, switch_name):
                 klientklass2_interfaces = 0
             except:
                 try:
+                    #For member-range find start and end interface
                     switch_interface_range['member-range']
                     start_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['name']).group(2)
                     end_interface = re.search(
                         "(\w\w-\d/\d/)(\d*)", switch_interface_range['member-range']['end-range']).group(2)
+
+                    #Create separate member statement for every part of the member-range
                     response = conn.send_config(
                         "wildcard range set interfaces interface-range klientklass2 member ge-0/0/[{}-{}]".format(start_interface, end_interface))
+
+                    #Delete the member-range
                     response = conn.send_config(
                         "delete interfaces interface-range klientklass2 member-range ge-0/0/{}".format(start_interface))
                     device_interfaces = len(
                         switch_interface_range['member']) + (1 + int(end_interface) - int(start_interface))
                 except:
                     klientklass2_interfaces = len(switch_interface_range['member'])
-
+    #If there isn´t any interfaces set interfaces to 0
     try:
         ap_interfaces
     except:
@@ -765,6 +850,7 @@ def get_switch_conf(request, switch_ip, switch_name):
     except:
         klientklass2_interfaces = 0
 
+    #Get interfaces in interface range again to load after member-ranges are fixed
     response = conn.send_config(
         "show interfaces | display xml")
     switch_interfaces_dict = json.dumps(xmltodict.parse(response.result))
@@ -779,8 +865,10 @@ def get_switch_conf(request, switch_ip, switch_name):
     switch_interfaces_terse = switch_interfaces_terse[
         'rpc-reply']['interface-information']['physical-interface']
 
+    #Reset switch interfaces_terse_encoded
     switch_interfaces_terse_encoded = []
     for interface_terse in switch_interfaces_terse:
+        #Add interface dict to every interface
         switch_interfaces_terse_encoded.append(
             {
                 'name': interface_terse['name'],
@@ -793,15 +881,17 @@ def get_switch_conf(request, switch_ip, switch_name):
     session = requests.Session()
     session.timeout = 30  # Set your timeout in seconds
     logging.info("Connecting to Solarwinds")
+    #Connect to solarwinds
     swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
                                solarwinds_password, verify=False, session=session)
     logging.info("Getting unused ports")
+    #Query to get unused Ports for a certain switch
     switch_interfaces_unused = swis.query(
         "SELECT TOP 100 Caption, DNS, IpAddress, Name, PortDescription, DaysUnused FROM Orion.UDT.UnusedPorts WHERE Caption LIKE '{}'".format(switch_name))['results']
 
 
 
-
+    #Set switch_conf dict to gathered config
     switch_conf = {
         'switch_name': switch_name,
         'switch_ip': switch_ip,
@@ -824,33 +914,33 @@ def get_switch_conf(request, switch_ip, switch_name):
     }
     return switch_conf
 
-
+#Load idex page
 def index(request):
     template = loader.get_template('switches/index.html')
 
     return render(request, 'switches/index.html')
 
-
+#GUI for replace switch
 def replace_switch(request):
     template = loader.get_template('switches/replace_switch.html')
     form = ReplaceSwitch()
 
+    #Uses get to send ip and switchname from list
     switch_ip = request.GET.get('ip', '')
     switch_name = request.GET.get('name', '')
+    #Using the function to get the switch configuration
     switch_conf = get_switch_conf(request, switch_ip, switch_name)
 
+    #If form is filled create new switch
     if request.method == 'POST':
         form = ReplaceSwitch(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            #try:
             cd['old_interfaces'] = switch_conf['switch_interfaces']
-            #messages.success(request, cd['old_interfaces'])
+
             switchmodell = create_switch_conf(request, cd, 'replace_switch')
             messages.success(
                 request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
-            #except:
-                #messages.error(request, "Ngt gick fel")
 
             return render(request, 'switches/replace_switch.html', {'form': form, 'switch_conf': switch_conf})
 
