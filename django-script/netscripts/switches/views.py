@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.core.files.storage import FileSystemStorage
 from django.template.loader import render_to_string
+
 #Other imports
 import re #Import regex
 import orionsdk #Solarwinds API
@@ -349,7 +350,7 @@ def create_switch_conf(request, cd, source):
     pdfkit.from_file("{}-label.html".format(interfaces_file_url),
                         "{}-label.pdf".format(interfaces_file_url), options=label_options)
 
-    ## I have inactivated deletion of html files since those actualy behave better than the pdf conversion often
+    ## I have inactivated deletion of html files since those actually often behave better than the pdf conversion
     #os.remove("{}.html".format(interfaces_file_url))
     #os.remove("{}-label.html".format(interfaces_file_url))
     #return switchmodell for message and to end function
@@ -582,7 +583,7 @@ def create_swc_switch_conf(request, cd, source):
     pdfkit.from_file("{}-label.html".format(interfaces_file_url),
                      "{}-label.pdf".format(interfaces_file_url), options=label_options)
 
-    ## I have inactivated deletion of html files since those actualy behave better than the pdf conversion often
+    ## I have inactivated deletion of html files since those actually often behave better than the pdf conversion
     #os.remove("{}.html".format(interfaces_file_url))
     #os.remove("{}-label.html".format(interfaces_file_url))
 
@@ -951,37 +952,44 @@ def replace_switch(request):
 
     return render(request, 'switches/replace_switch.html', {'form': form, 'switch_conf': switch_conf})
 
-
+#GUI-for replacing switch with swc
 def replace_swc_switch(request):
     template = loader.get_template('switches/replace_swc_switch.html')
     form = ReplaceSwcSwitch()
 
+    #GUI for replace switch with swc
     switch_ip = request.GET.get('ip', '')
+    #Base the new name on the old but change name from swa- to swc-
     switch_name = request.GET.get('name', '').replace("swa-", "swc-", 1)
+    #Get lists of free edge IP-adresses
     ny_ip_adress = get_next_edge_ip()
+    #Get configuration of current switch
     switch_conf = get_switch_conf(request, switch_ip, switch_name)
 
+    #If form is posted create new switch
     if request.method == 'POST':
         form = ReplaceSwcSwitch(request.POST)
+        #Check if form is valid
         if form.is_valid():
             cd = form.cleaned_data
-            #try:
+            #Set old interfaces to switch_interfaces for later report
             cd['old_interfaces'] = switch_conf['switch_interfaces']
-            #messages.success(request, cd['old_interfaces'])
+            
+            #Create switch and return model of switch to the user
             switchmodell = create_swc_switch_conf(request, cd, 'replace_switch')
             messages.success(
                 request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
-            #except:
-            #messages.error(request, "Ngt gick fel")
-
+            
+            #Render the page
             return render(request, 'switches/replace_swc_switch.html', {'form': form, 'switch_conf': switch_conf, 'IPadress': ny_ip_adress})
 
         else:
             messages.error(
                 request, 'Kontrollera att du har fyllt i alla fält')
-
+    #Render the replace switch page
     return render(request, 'switches/replace_swc_switch.html', {'form': form, 'switch_conf': switch_conf, 'IPadress': ny_ip_adress})
 
+#GUI for searching switch
 def search_switch(request):
     template = loader.get_template('switches/search_switch.html')
     form = SearchSwitch()
@@ -990,88 +998,102 @@ def search_switch(request):
         form = SearchSwitch(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-
+            #Connect to Solarwinds
             session = requests.Session()
             session.timeout = 30  # Set your timeout in seconds
             logging.info("Connecting to Solarwinds")
             swis = orionsdk.SwisClient("SolarWinds-Orion", solarwinds_username,
                                     solarwinds_password, verify=False, session=session)
             logging.info("Getting switches according to search")
-
+            #Check if entered string is a IP or a switchname
             if valid_ip(cd['switchnamn']):
+                #Query to get switch by IP
                 nodes = swis.query(
                     "SELECT TOP 500  IPAddress, IPAddressType, Caption, NodeDescription, Description, Location, Status FROM Orion.Nodes WHERE IPAddress LIKE '{}'".format(cd['switchnamn']))['results']
             else:
+                #Delete swc or swa to use only the rest of the name in the query
                 cd['switchnamn'] = cd['switchnamn'].replace("swa-", "", 1).replace("swc-", "", 1)
+                #Query to get access and combined switches that match the string
                 nodes = swis.query(
                     "SELECT TOP 500  IPAddress, IPAddressType, Caption, NodeDescription, Description, Location, Status FROM Orion.Nodes WHERE Caption LIKE 'swa-%{}%' OR Caption LIKE 'swc-%{}%'".format(cd['switchnamn'], cd['switchnamn']))['results']
 
-            #messages.success(request, nodes)
-
+            
+            #Render the result
             return render(request, 'switches/search_switch.html', {'form': form, 'nodes': nodes})
 
-
+    #Render the page when nothing is searched on
     return render(request, 'switches/search_switch.html', {'form': form})
 
-
+#GUI for configuring switch
 def configure_switch(request):
     template = loader.get_template('switches/switch_configuration.html')
     form = ConfigureSwitch()
 
+    #Set variables from the get string
     switch_ip = request.GET.get('ip', '')
     switch_name = request.GET.get('name', '')
+    #Get existing switch configure
     switch_conf = get_switch_conf(request, switch_ip, switch_name)
+    #Reset swithch interfaces
     switch_interface_conf = []
 
-    #messages.success(request, switch_conf)
-
+    
+    #Go through interface ranges
     for interface_range in switch_conf['switch_interfaces']:
+        #Don't list interface-ranges access-ports and dante since interfaces in those ranges are also in other interface-ranges
         if interface_range['name'] != 'access-ports' and interface_range['name'] != 'dante':
             try:
+                #Interfaces look different if it is one interface or multiple in one range so need to convert to list if there is only one interface
                 if not isinstance(interface_range['member'], list):
                     interface_range['member'] = [interface_range['member']]
+                #Create a dict per interface
                 for interface_conf in interface_range['member']:
-                    #messages.success(request, "Interface: {} Interface-range: {}".format(interface_conf['name'], interface_range['name']))
+                    
                     interface_conf_dict = {
                         "interface": interface_conf['name'],
                         "interface_range": interface_range['name']
                     }
+                    #Add interface dict to list of interfaces_conf
                     switch_interface_conf.append(interface_conf_dict)
             except:
                 pass
+    #Include switch_interface_conf in switch_conf
     switch_conf['interface_dict'] = switch_interface_conf
-
+    #If a change is made, make the changes
     if request.method == 'POST':
         form = ConfigureSwitch(request.POST)
         switch_ip = request.GET.get('ip', '')
 
         if form.is_valid():
             cd = form.cleaned_data
+            #Reset interfaces
             interfaces = []
             for conf_item in request.POST.dict():
-
+                #Group interfaces to get just the interface number
                 if re.search("(interface_)(\w\w-\d/\d/\d*)", conf_item):
                     interface = re.search(
                         "(interface_)(\w\w-\d/\d/\d*)", conf_item).group(2)
-
+                    #Add he new settings
                     interfaces.append({
                         'interface': interface,
                         'interface_range': request.POST.dict()[conf_item]
                         })
-            #messages.success(request, interfaces)
-            #messages.success(request, switch_interface_conf)
-
+            
+            #Reset interface_changes
             interface_changes = []
-
+            #Check the differences between the new and the old interface-configurations
             for interface_old in switch_interface_conf:
                 for interface_new in interfaces:
+                    #For one interface check if it is still the same interface_range
                     if interface_old['interface'] == interface_new['interface']:
                         if interface_old['interface_range'] != interface_new['interface_range']:
+                            #Create dict for changing interfaces
                             interface_change = {
                                 'interface': interface_old['interface'],
                                 'interface_range_old': interface_old['interface_range'],
                                 'interface_range_new': interface_new['interface_range']
                             }
+                            #Handle empty or inactive interface-ranges
                             for interface_range in switch_conf['switch_interfaces']:
                                 if interface_range['name'] == interface_new['interface_range']:
                                     if '@inactive' in interface_range:
@@ -1080,7 +1102,7 @@ def configure_switch(request):
                                     else:
                                         interface_change['interface_range_active'] = True
                             interface_changes.append(interface_change)
-
+            #Connection info for the switch
             device = {
                 "host": switch_ip,
                 "auth_username": switch_username,
@@ -1088,101 +1110,120 @@ def configure_switch(request):
                 "auth_strict_key": False,
                 "platform": "juniper_junos"
             }
+            #Logging in to the switch
             logging.info("Logging in to switch {} with IP {}".format(
                 switch_name, switch_ip))
             conn = Scrapli(**device)
             conn.open()
-            #messages.success(request, cd)
+            #Set Snmp location according to our standard
             snmp_location = "{}, {}, {}, {}, {}".format(cd['gatuadress'], cd['popularnamn'], cd['plan'], cd['rum_nummer'], cd['rum_beskrivning'])
+            #Set hostname to switchname
             response = conn.send_config("set system host-name {}".format(cd['switchnamn']))
+            #Update snmp location on switch
             response = conn.send_config(
                 'set snmp location "{}"'.format(snmp_location))
+            #Make interface-ranges changes
             for interface_change in interface_changes:
                 try:
+                    ##Set new interface range
                     response = conn.send_config(
                         "set interfaces interface-range {} member {}".format(interface_change['interface_range_new'], interface_change['interface']))
+                    #Delete from old interface-range
                     response = conn.send_config(
                         "delete interfaces interface-range {} member {}".format(interface_change['interface_range_old'], interface_change['interface']))
+                    #If interface-range is inactive, activate it
                     if not interface_change['interface_range_active']:
                         response = conn.send_config(
                             "activate interfaces interface-range {}".format(interface_change['interface_range_new']))
 
                 except:
                     messages.error(request, "Kunde inte uppdatera interface-range")
+            #Do a commit confirmed for not chopping of my leg and comment to know when looking in a switch what made the change
             response = conn.send_config('commit confirmed comment "Netscript Config changes"')
+            #As long as the switch still is reachable confirm the commit
             response = conn.send_config('commit')
+            #If commit worked show message that it worked
             if "commit complete" in response.result:
                 try:
                     messages.success(request, interface_change)
                 except:
                     messages.success(request, "Ändringar sparade")
+            #If there is a empty interface range deactivate it
             elif "has no member" in response.result:
+                #Get which interface-range is the empty one
                 empty_interface_range = re.search(
                     "(error: interface-range \')(\w*)(\' has no member)", response.result).group(2)
+                #deactivate the interface-range
                 response = conn.send_config(
                     "deactivate interfaces interface-range {}".format(empty_interface_range))
+                #Do a commit confirmed for not chopping of my leg and comment to know when looking in a switch what made the change
                 response = conn.send_config(
                     'commit confirmed comment "Netscript Config changes"')
+                    #If commit worked show message that it worked
                 response = conn.send_config('commit')
+                #If it then worked show message that it worked, if possible show what interface changed otherwise just show a message
                 if "commit complete" in response.result:
                     try:
                         messages.success(request, interface_change)
                     except:
                         messages.success(request, "Ändringar sparade")
                 else:
+                    #If it this commit dosen't work
                     messages.error(request, response.result)
             else:
+                #If the first commit didn't work send error message to the user
                 messages.error(request, response.result)
-
-
-
-            #try:
-            #cd['old_interfaces'] = switch_conf['switch_interfaces']
-            #messages.success(request, cd['old_interfaces'])
-            #messages.success(
-            #    request, "Switch: {}, Uppdaterad".format(switchmodell))
-            #except:
-            #messages.error(request, "Ngt gick fel")
-
+            
+            #Close connection th the switch
             conn.close()
 
+            #Get new configuration and reload page
             switch_ip = request.GET.get('ip', '')
             switch_name = request.GET.get('name', '')
             switch_conf = get_switch_conf(request, switch_ip, switch_name)
             switch_interface_conf = []
 
-            #messages.success(request, switch_conf)
-
+            #Go through interface ranges
             for interface_range in switch_conf['switch_interfaces']:
+                #Don't list interface-ranges access-ports and dante since interfaces in those ranges are also in other interface-ranges
                 if interface_range['name'] != 'access-ports' and interface_range['name'] != 'dante':
                     try:
+                        #Interfaces look different if it is one interface or multiple in one range so need to convert to list if there is only one interface
                         if not isinstance(interface_range['member'], list):
                             interface_range['member'] = [interface_range['member']]
+
+                        #Create a dict per interface
                         for interface_conf in interface_range['member']:
-                            #messages.success(request, "Interface: {} Interface-range: {}".format(interface_conf['name'], interface_range['name']))
+                            
                             interface_conf_dict = {
                                 "interface": interface_conf['name'],
                                 "interface_range": interface_range['name']
                             }
+                            #Add interface dict to list of interfaces_conf
                             switch_interface_conf.append(interface_conf_dict)
                     except:
                         pass
+
+            #Include switch_interface_conf in switch_conf
             switch_conf['interface_dict'] = switch_interface_conf
 
+            #Return page loaded with switchconfiguation
             return render(request, 'switches/switch_configuration.html', {'form': form, 'switch_conf': switch_conf})
 
         else:
+            #If not all required fields are populated ask the user to fix that
             messages.error(
-                request, 'Kontrollera att du har fyllt i alla fält')
-
+                request, 'Kontrollera att du har fyllt i alla nödvändiga fält (Gatuadress)')
+    #Return page witch configuration
     return render(request, 'switches/switch_configuration.html', {'form': form, 'switch_conf': switch_conf})
 
-
+#GUI for creating new access-switch
 def new_switch(request):
     form = NewSwitch()
     template = loader.get_template('switches/new_switch.html')
+    #Get all available IP-adresses
     ny_ip_adress = get_next_access_ip()
-    #messages.info(request, ny_ip_adress)
+    
 
 
     if request.method == 'POST':
@@ -1190,47 +1231,56 @@ def new_switch(request):
         if form.is_valid():
             cd = form.cleaned_data
             try:
+                #Create new switch-configuration based on the form and populate switchmodel
                 switchmodell = create_switch_conf(request, cd, 'new_switch')
+                #Show message of what switchmodel will be used and where all the files are stored
                 messages.success(
                 request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
             except:
                 messages.error(request, "Ngt gick fel")
 
+            #Load page
             return render(request, 'switches/new_switch.html', {'form': form, 'IPadress': ny_ip_adress})
 
         else:
+            #If not all fields are poulated ask the user to correct that
             messages.error(
                 request, 'Kontrollera att du har fyllt i alla fält')
 
-
+    #Load page
     return render(request, 'switches/new_switch.html', {'form': form, 'IPadress': ny_ip_adress})
 
-
+#GUI for creating new swc-switch
 def new_swc_switch(request):
     form = NewSwcSwitch()
     template = loader.get_template('switches/new_swc_switch.html')
+    #Get the nex available IP-adress for a edge switch
     ny_ip_adress = get_next_edge_ip()
+
+    #Populate variables from GET if created with new site
     gatuadress = request.GET.get('gatuadress', '')
     popularnamn = request.GET.get('popularnamn', '')
 
-    #messages.info(request, ny_ip_adress)
 
     if request.method == 'POST':
         form = NewSwcSwitch(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
             try:
+                #Create new switch-configuration based on the form and populate switchmodel
                 switchmodell = create_swc_switch_conf(
                     request, cd, 'new_switch')
+                #Show message of what switchmodel will be used and where all the files are stored
                 messages.success(
                     request, "Switchmodell: {}, filer finns på G:\IT-avdelningen special\mist\imports\ekahau\{}".format(switchmodell, cd.get('gatuadress')))
             except:
                 messages.error(request, "Något gick fel")
-
+            #Return page
             return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress, 'gatuadress': gatuadress, 'popularnamn': popularnamn})
 
         else:
+            #If not all fields are poulated ask the user to correct that
             messages.error(
                 request, 'Kontrollera att du har fyllt i alla fält')
-
+    #Return page
     return render(request, 'switches/new_swc_switch.html', {'form': form, 'IPadress': ny_ip_adress, 'gatuadress': gatuadress, 'popularnamn': popularnamn})
